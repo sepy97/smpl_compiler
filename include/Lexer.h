@@ -10,7 +10,7 @@ enum token
 	number,
 	
 	eof
-}
+};
 
 class Lexer
 {
