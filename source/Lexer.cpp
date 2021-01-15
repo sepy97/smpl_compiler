@@ -2,64 +2,99 @@
 
 Lexer::Lexer (std::string s)
 {
-	std::cout << "Constructed Lexer" << std::endl;
+	std::cout << "Constructor called" << std::endl;
 
 	inputFile.open (s);
 
-	std::cout << "Opened input file" << std::endl;
+	std::cout << "inpfile opened" << std::endl;
 
-	inputFile >> sourceCode;
+	val = 0;
+	id = 0;
+	numOfVars = 1;
 
-	sym = sourceCode;
-	next ();
-/*	std::cout << "Scanned input file" << std::endl;
-	while (*sym != '\0') 
-	{
-		std::cout << *sym << std::endl;
-		*sym++;
-	}
-*/
+	tk = eof;
+
+	sym = inputFile.get ();
 }
 
 void Lexer::next ()
 {
-	switch (*sym)
+	switch (sym)
 	{
 		case '\0':
 		{
 			std::cout << "Finished!" << std::endl;
 			break;
 		}
+		case ' ':
+		{
+			sym = inputFile.get ();
+			while (sym == ' ') sym = inputFile.get ();
+		}
 		case 'a'...'z':
 		case 'A'...'Z':
 		{
-			std::cout << "Scanning an identifier:" << std::endl << *sym << std::endl;
-			*sym++;
-			while (isalnum (*sym))
+			std::string var;
+			var += sym;
+			sym = inputFile.get ();
+			while (isalnum (sym))
 			{
-				std::cout << *sym << std::endl;
-				*sym++;
+				var += sym;
+				sym = inputFile.get ();
 			}
+			
+			if (varTable.find (var) == varTable.end ())
+			{
+				varTable.insert (std::pair<std::string, int> (var, numOfVars));
+				id = numOfVars;
+				numOfVars++;
+			}
+			else
+			{
+				id = varTable[var];
+			}
+
+			//id = -1; @@@
+			
+			tk = identifier;
 			break;
 		}
 		case '0'...'9':
 		{	
-			std::cout << "Starting a number: " << std::endl << *sym << std::endl;
-			*sym++;
-			while (isdigit (*sym))
+			int v = sym - '0';
+			sym = inputFile.get ();
+			while (isdigit (sym))
 			{	
-				std::cout << *sym << std::endl;
-				*sym++;
+				v = 10 * v + sym - '0';
+				sym = inputFile.get ();
 			}
+			val = v;
+			tk = number;
 			break;
 		}
 		default:
 		{
-			std::cout << "Other case: " << *sym << std::endl;
+			std::cout << "Other case: " << sym << std::endl;
 			break;
 		}	
 
 	}
+
+}
+
+int Lexer::getVal ()
+{
+	return val;
+}
+
+int Lexer::getId ()
+{
+	return id;
+}
+
+token Lexer::getToken ()
+{
+	return tk;
 }
 
 void Lexer::err ()

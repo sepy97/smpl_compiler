@@ -3,6 +3,8 @@
 #include <fstream>
 #include <cctype>
 #include <vector>
+#include <map>
+
 
 enum token
 {
@@ -16,13 +18,23 @@ class Lexer
 {
 public:
 	Lexer (std::string s);
-	std::vector<token> tokenize ();
+	void next ();
+	int getVal ();
+	int getId ();
+	token getToken ();
 
 private:
-	char* sym;
+	char sym;
 	void err ();
-	void next ();
 	std::ifstream inputFile;
-	char* sourceCode;
+	
+	int val;
+	int id;
+	token tk;
+	
+	typedef std::map<std::string, int> map;
+
+	unsigned numOfVars;
+	map varTable;
 
 };
