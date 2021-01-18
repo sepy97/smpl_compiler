@@ -19,17 +19,13 @@ Lexer::Lexer (std::string s)
 
 void Lexer::next ()
 {
+	while (sym == ' ') sym = inputFile.get ();
 	switch (sym)
 	{
 		case '\0':
 		{
 			std::cout << "Finished!" << std::endl;
 			break;
-		}
-		case ' ':
-		{
-			sym = inputFile.get ();
-			while (sym == ' ') sym = inputFile.get ();
 		}
 		case 'a'...'z':
 		case 'A'...'Z':
@@ -43,20 +39,25 @@ void Lexer::next ()
 				sym = inputFile.get ();
 			}
 			
-			if (varTable.find (var) == varTable.end ())
+			if (reservedTokens.find (var) != reservedTokens.end ())
 			{
-				varTable.insert (std::pair<std::string, int> (var, numOfVars));
-				id = numOfVars;
-				numOfVars++;
+				tk = reservedTokens[var];
 			}
 			else
 			{
-				id = varTable[var];
-			}
+				if (varTable.find (var) == varTable.end ())
+				{
+					varTable.insert (std::pair<std::string, int> (var, numOfVars));
+					id = numOfVars;
+					numOfVars++;
+				}
+				else
+				{
+					id = varTable[var];
+				}
 
-			//id = -1; @@@
-			
-			tk = identifier;
+				tk = identifier;
+			}
 			break;
 		}
 		case '0'...'9':
@@ -72,6 +73,141 @@ void Lexer::next ()
 			tk = number;
 			break;
 		}
+		case '=':
+		{
+			sym = inputFile.get ();
+			if (sym == '=')
+			{
+				sym = inputFile.get ();
+				tk = eq;
+			}
+			else err ();
+			break;
+		}
+		case '!':
+		{
+			sym = inputFile.get ();
+			if (sym == '=')
+			{
+				sym = inputFile.get ();
+				tk = neq;
+			}
+			else err ();
+			break;
+		}
+		case '<':
+		{
+			sym = inputFile.get ();
+			if (sym == '=')
+			{
+				sym = inputFile.get ();
+				tk = le;
+			}
+			else if (sym == '-')
+			{
+				sym = inputFile.get ();
+				tk = append;
+			}
+			else tk = less;
+			break;
+		}
+		case '>':
+		{
+			sym = inputFile.get ();
+			if (sym == '=')
+			{
+				sym = inputFile.get ();
+				tk = ge;
+			}
+			else tk = greater;
+			break;
+		}
+		case '+':
+		{
+			sym = inputFile.get ();
+			//@@@@
+			
+			break;
+		}
+		case '-':
+		{
+			sym = inputFile.get ();
+			//@@@@
+			break;
+		}
+		case '*':
+		{
+			sym = inputFile.get ();
+			//@@@@
+			break;
+		}
+		case '/':
+		{
+			sym = inputFile.get ();
+			//@@@@
+			break;
+		}
+		case '(':
+		{
+			sym = inputFile.get ();
+			tk = openBracket;
+			break;
+		}
+		case ')':
+		{
+			sym = inputFile.get ();
+			tk = closeBracket;
+			break;
+		}
+		case '[':
+		{
+			sym = inputFile.get ();
+			tk = openSqBracket;
+			break;
+		}
+		case ']':
+		{
+			sym = inputFile.get ();
+			tk = closeSqBracket;
+			break;
+		}
+		case '{':
+		{
+			sym = inputFile.get ();
+			tk = openCurlBracket;
+			break;
+		}
+		case '}':
+		{
+			sym = inputFile.get ();
+			tk = closeCurlBracket;
+			break;
+		}
+		case '.':
+		{
+			sym = inputFile.get ();
+			tk = dot;
+			break;	
+		}
+		case ',':
+		{
+			sym = inputFile.get ();
+			tk = comma;
+			break;
+		}
+		case ';':
+		{
+			sym = inputFile.get ();
+			tk = semicolon;
+			break;
+		}
+		case '#':
+		{
+			sym = inputFile.get ();
+			while (sym != '\n') sym = inputFile.get ();
+			sym = inputFile.get ();
+			break;
+		}		
 		default:
 		{
 			std::cout << "Other case: " << sym << std::endl;

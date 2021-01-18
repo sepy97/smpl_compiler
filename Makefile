@@ -8,7 +8,7 @@ EXE := $(BIN_DIR)/compiler
 SRC := $(wildcard $(SRC_DIR)/*.cpp)
 OBJ := $(SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
 
-CXXFLAGS := -I$(INC_DIR) -Wall
+CXXFLAGS := -I$(INC_DIR) -Wall -std=c++11
 
 .PHONY: all 
 

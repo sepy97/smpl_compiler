@@ -10,9 +10,11 @@ int main ()
 	std::cout << "Lexer constructed" << std::endl;
 
 	tmp.next ();
+	std::cout << "next function called: " << tmp.getToken () << " " << tmp.getId () << " " << tmp.getVal () << std::endl;
 	tmp.next ();
-	
-	std::cout << "next function called: " << tmp.getToken () << " " << tmp.getId () << std::endl;
+	std::cout << "next function called: " << tmp.getToken () << " " << tmp.getId () << " " << tmp.getVal () << std::endl;
+	tmp.next ();
+	std::cout << "next function called: " << tmp.getToken () << " " << tmp.getId () << " " << tmp.getVal () << std::endl;
 
 
 	return 0;
