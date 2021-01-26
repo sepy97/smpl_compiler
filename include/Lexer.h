@@ -9,7 +9,7 @@
 enum token
 {
 	identifier,
-	number,
+	num,
 	eq,
 	neq,
 	le,
@@ -19,8 +19,8 @@ enum token
 	add,
 	sub,
 	mul,
-	div,
-	append,
+	divis,
+	assign,
 
 	openBracket,
 	closeBracket,
@@ -60,6 +60,7 @@ public:
 	int getVal ();
 	int getId ();
 	token getToken ();
+	char getSym ();
 
 private:
 	char sym;

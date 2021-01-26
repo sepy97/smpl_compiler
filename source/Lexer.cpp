@@ -70,7 +70,7 @@ void Lexer::next ()
 				sym = inputFile.get ();
 			}
 			val = v;
-			tk = number;
+			tk = num;
 			break;
 		}
 		case '=':
@@ -106,7 +106,7 @@ void Lexer::next ()
 			else if (sym == '-')
 			{
 				sym = inputFile.get ();
-				tk = append;
+				tk = assign;
 			}
 			else tk = less;
 			break;
@@ -125,26 +125,25 @@ void Lexer::next ()
 		case '+':
 		{
 			sym = inputFile.get ();
-			//@@@@
-			
+			tk = add;
 			break;
 		}
 		case '-':
 		{
 			sym = inputFile.get ();
-			//@@@@
+			tk = sub;
 			break;
 		}
 		case '*':
 		{
 			sym = inputFile.get ();
-			//@@@@
+			tk = mul;
 			break;
 		}
 		case '/':
 		{
 			sym = inputFile.get ();
-			//@@@@
+			tk = divis;
 			break;
 		}
 		case '(':
@@ -231,6 +230,11 @@ int Lexer::getId ()
 token Lexer::getToken ()
 {
 	return tk;
+}
+
+char Lexer::getSym ()
+{
+	return sym;
 }
 
 void Lexer::err ()
