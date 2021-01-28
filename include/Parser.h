@@ -94,7 +94,7 @@ private:
 *	"Lexer" will get tokens from a source file (more info in Lexer.h)
 */
 	Lexer lex;
-	void err ();
+	void err (std::string arg);
 
 	//@@@ varTable;
 

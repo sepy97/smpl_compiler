@@ -2,12 +2,7 @@
 
 Lexer::Lexer (std::string s)
 {
-	std::cout << "Constructor called" << std::endl;
-
 	inputFile.open (s);
-
-	std::cout << "inpfile opened" << std::endl;
-
 	val = 0;
 	id = 0;
 	numOfVars = 1;
@@ -19,12 +14,12 @@ Lexer::Lexer (std::string s)
 
 void Lexer::next ()
 {
-	while (sym == ' ') sym = inputFile.get ();
+	while (sym == ' ' || sym == '\n' || sym == '\t') sym = inputFile.get ();
 	switch (sym)
 	{
-		case '\0':
+		case EOF:
 		{
-			std::cout << "Finished!" << std::endl;
+            tk = eof;
 			break;
 		}
 		case 'a'...'z':
@@ -209,7 +204,7 @@ void Lexer::next ()
 		}		
 		default:
 		{
-			std::cout << "Other case: " << sym << std::endl;
+            err ();
 			break;
 		}	
 

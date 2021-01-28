@@ -63,6 +63,7 @@ public:
 	char getSym ();
 
 private:
+   // const char EOF = -1;
 	char sym;
 	void err ();
 	std::ifstream inputFile;
@@ -91,6 +92,7 @@ private:
 	{"array", tk_array},
 	{"void", tk_void},
 	{"function", tk_function},
-	{"main", tk_main} };
+	{"main", tk_main}
+    };
 
 };
