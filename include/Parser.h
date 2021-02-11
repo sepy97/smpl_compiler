@@ -1,11 +1,21 @@
 #include "Lexer.h"
-
+#include "Module.h"
+/*
 enum resultType
 {
 	constant,
-	variable,
-	registr,
+	//variable,
+    instruction,
+};*/
+/*
+enum resultOp
+{
+    resultAdd,
+    resultSub,
+    resultMul,
+    resultDiv,
 };
+  */
 
 class Parser
 {
@@ -14,81 +24,65 @@ public:
 	void parse ();
 
 private:
-	class Result
+/*	class Result
 	{
 
-	/**
-	*	Result is a value that will be returned by Compute function @@@@
-	*/
 
 	public:
 		Result ()
 		{
 			kind = constant;
-			val = 0, addr = -1, reg = -1;
+            val = 0;
+            //, addr = -1, reg = -1;
 		}
-		Result (resultType t, int v)
-		{
-			kind = t;
-			switch (t)
-			{
-				case constant:
-				{
-					val = v;
-					break;
-				}
-				case variable:
-				{
-					addr = v;
-					break;
-				}
-				case registr:
-				{
-					reg = v;
-					break;
-				}
-				default:
-				{
-					std::cout << "Incorrect resultType (Result constructor): " << t << " " << v << std::endl;
-				}
-			}
-		}
+        Result (resultType kind, int arg)
+        {
+            this->kind = kind;
+            switch (kind)
+            {
+                case constant:
+                {
+                    this->val = arg;
+                    break;
+                }
+                case variable:
+                {
+                    this->addr = arg;
+                    break;
+                }
+                case instruction:
+                {
+                    this->ssaline = arg;
+                    break;
+                }
+                default:
+                {
+                    std::cout << "Incorrect resultType (Result constructor): " << kind << " " << arg << std::endl;
+                }
+            }
+            //this->val = v;
+        }
+        
 
-		std::pair <resultType, int> getResult ()
-		{
-			std::pair <resultType, int> ret;
-			ret.first = kind;
-			switch (kind)
-			{
-				case constant:
-                                {
-                                        ret.second = val;
-                                        break;
-                                }
-                                case variable:
-                                {
-                                        ret.second = addr;
-                                        break;
-                                }
-                                case registr:
-                                {
-                                        ret.second = reg;
-                                        break;
-                                }
-                                default:
-                                {
-                                        std::cout << "Incorrect resultType (function getResult): " << kind << " " << val << std::endl;
-                                }
-			}
-			return ret;
-		}
+        resultType getKind ()
+        {
+            return kind;
+        }
+        
+        int getVal ()
+        {
+            return val;
+        }
+        
+        
 		
 	private:
-		resultType kind;	/** constant, variable or register */
-		int val;	 	/** use this variable if we've computed a constant value */
-		int addr;		/** use this variable if we've computed a variable (addr is variable address in varTable */
-		int reg;		/** use this variable if we've computed a registr (reg is a number of a registr) */
-	};
+		resultType kind;
+		int val;
+        //int addr;
+        //int ssaline;
+        //Instruction* inst;
+	};*/
 
 /**
 *	"Lexer" will get tokens from a source file (more info in Lexer.h)
@@ -112,28 +106,43 @@ private:
 	void statement ();
 
 	void assignment ();
-	void funcCall ();
+	Operand funcCall ();
 	void ifStatement ();
 	void whileStatement ();
 	void returnStatement ();
 
-	void designator ();
-	void factor ();
-	void term ();
-	void expression ();
+	Operand designator ();
+	Operand factor ();
+	Operand term ();
+	Operand expression ();
 	void relation ();
 
-	void ident ();
-	void number ();
+	Operand ident ();
+	Operand number ();
 
 	void relOp ();
 	//@@@@ void digit ();
 	//@@@@ void letter ();
-
+    
+/**
+*    "Stack Pointer" -- depth of a current expression stack
+*/
+    //int buf [];
 	
 /**
 *	"Stack Pointer" -- depth of a current expression stack
 */
 	int sp;
-
+    
+    //void Compute (resultOp op, Result* x, Result* y);
+    
+    Module* m;
+    Function* currentFunc;
+    BasicBlock* currentBB;
+    
+    
+/**
+ *  varTable stores variable id (first) and SSA line number (second)
+ */
+    std::map <int, int> varTable;
 };

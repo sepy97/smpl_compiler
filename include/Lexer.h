@@ -48,6 +48,9 @@ enum token
 	tk_void,
 	tk_function,
 	tk_main,
+    tk_read,
+    tk_write,
+    tk_writeNL,
 	
 	eof
 };
@@ -92,7 +95,10 @@ private:
 	{"array", tk_array},
 	{"void", tk_void},
 	{"function", tk_function},
-	{"main", tk_main}
+	{"main", tk_main},
+    {"inputNum", tk_read},
+    {"outputNum", tk_write}
+    //{"writeNL", tk_writeNL}
     };
 
 };

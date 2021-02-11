@@ -8,6 +8,8 @@ int main ()
 	//Lexer tmp ("inp.txt");
     Parser tmp ("inp.txt");
     
+    //std::cout << "BEFORE parse" << std::endl;
+    
     tmp.parse ();
 /*
 	std::cout << "Lexer constructed" << std::endl;
