@@ -61,11 +61,12 @@ public:
     bool operator==(const Instruction &i2) const
     {
         return (this->SSALine == i2.SSALine);
-    }/*
-    bool operator== (const Instruction &i1, const Instruction &i2)
+    }
+    
+    int getLine ()
     {
-        return (i1.SSALine == i2.SSALine);
-    }*/
+        return SSALine;
+    }
     
     std::string toString ();
     

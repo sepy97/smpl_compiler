@@ -183,6 +183,7 @@ std::string Instruction::toString ()
         }
         case op_const:
         {
+            res += "const ";
             res += std::to_string (operand1);
             break;
         }

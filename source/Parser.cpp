@@ -89,17 +89,8 @@ void Parser::varDecl ()
     token tk = lex.getToken ();
     while (tk == identifier)
     {
-        //Operand o = ident ();//
-        
         varTable [lex.getId ()] = 0;
         lex.next ();                            /** Consuming identifier */
-        /*
-        if (o.getKind () == variable)
-        {
-            varTable [o.getVal ()] = 0; //Marking uninitialized variables with ssa line 0
-        }
-        else err ("Incorrect variable declaration");
-          */
         
         tk = lex.getToken ();
         if (tk == comma)
@@ -311,49 +302,17 @@ void Parser::assignment ()
     lex.next ();                    /** Consuming let */
     
 	int o1 = designator ();
-    //if (o1.getKind () != variable) err ("Incorrect assignment");
-    //std::cout << "assignment designator: " << o1 << std::endl;
 
 	token tk = lex.getToken ();
 	if (tk != assign) err ("assignment");
     lex.next ();                    /** Consuming assign */
-	
 	int o2 = expression ();
-   // std::cout << "assignment expression: " << o2 << std::endl;
-    
-    /*if (o2.getKind () == constant)
+   
+    if (o2 > 0)
     {
-        int line = ++sp;
-        currentBB->pushInstruction (new Instruction (op_add, Operand (0), o2, line) );
-        varTable [o1.getVal ()] = line;
+        varTable [o1] = o2;
     }
-    else if (o2.getKind () == variable)
-    {
-        // assign variable's ssa line (from varTable) to o1
-        int line = varTable [o2.getVal ()];
-        if (line > 0)
-        {
-            varTable [o1.getVal ()] = line;
-        }
-        else err ("Assigning an unitialized variable");
-    }
-    else if (o2.getKind () == type_read)
-    {
-        
-    }
-    else if (o2.getKind () == type_write)
-    {
-        
-    }
-    else // o2 is SSA line*/
-    //{
-        if (o2 > 0)
-        {
-            varTable [o1] = o2;
-        }
-        else err ("Assigning non-existing SSA line");
-    //}
-    
+    else err ("Assigning non-existing SSA line");
     
 }
 
@@ -417,27 +376,79 @@ int Parser::funcCall ()
 
 void Parser::ifStatement ()
 {
+    //std::cout << "ifStatement! " << std::endl;
+    
+    BasicBlock* thenBB = new BasicBlock ();
+    BasicBlock* elseBB = new BasicBlock ();
+    BasicBlock* fiBB   = new BasicBlock ();
+    
+    BasicBlock* ifBB = currentBB;
+    //int line = 0;//++sp;
+    
+    //std::cout << "ifStatement ---- all BB generated! " << std::endl;
+    
     lex.next ();                    /** Consuming if */
 
 	relation ();
+    
+    //std::cout << "ifStatement ---- relation passed! " << std::endl;
 
 	token tk = lex.getToken ();
 	if (tk != tk_then) err ("ifStatement");
     lex.next ();                    /** Consuming then */
-	
+	//generate thenBB
+    //BasicBlock* thenBB = new BasicBlock ();
+    
+    //@@@@
+    currentBB = thenBB;
 	statSequence ();
+    
+    int line = ++sp;
+    //thenBB->pushInstruction (new Instruction (op_bra, -1 /* yet unknown */, -1, line));
+    //currentFunc->linkBB (ifBB, thenBB);
+    
+    //std::cout << "ifStatement ---- thenBB passed! " << std::endl;
 
 	tk = lex.getToken ();
+    bool wasElse = false;
 	if (tk == tk_else)
 	{
+        wasElse = true;
+        thenBB->pushInstruction (new Instruction (op_bra, -1 /* yet unknown */, -1, line));
         lex.next ();                /** Consuming else */
-        
+        //generate elseBB
+        //BasicBlock* elseBB = new BasicBlock ();
+        currentBB = elseBB;
 		statSequence ();
+        
+        
+        //std::cout << "ifStatement ---- elseBB passed! " << std::endl;
+        
+       // line = ++sp;
+       // Instruction* elseBranch = new Instruction (op_bra, -1/*unknown line*/, -1, line);
+        //elseBB->pushInstruction (op_bra, -1/*unknown line*/, -1, line)
+        //currentFunc->linkBB (ifBB, elseBB);
 	}
 	
 	tk = lex.getToken ();
 	if (tk != tk_fi) err ("ifStatement");
     lex.next ();                    /** Consuming fi */
+    //generate fiBB
+    //BasicBlock* fiBB = new BasicBlock ();
+    currentBB = fiBB;
+    //@@@@ add phi functions
+    fiBB->pushInstruction (new Instruction (++sp));
+    
+    //std::cout << "ifStatement ---- fiBB passed! " << std::endl;
+    
+    
+   // elseBB->pushInstruction (elseBranch);
+    /*
+    currentFunc->linkBB (thenBB, fiBB);
+    if (wasElse) currentFunc->linkBB (elseBB, fiBB);*/
+    if (wasElse) ifThenElseDiamond (ifBB, thenBB, elseBB, fiBB);
+    else ifThenDiamond (ifBB, thenBB, fiBB);
+    
 }
 
 void Parser::whileStatement ()
@@ -502,11 +513,9 @@ int Parser::expression ()
     
     //std::cout << "expression term: " << o1 << std::endl;
     result = o1;
-    
-    //resultOp rop;
 
 	token tk = lex.getToken ();
-    //if (tk != add && tk != sub) err ("expression");
+    
     while (tk == add || tk == sub)
     {
         opCode opc = op_add;
@@ -524,100 +533,70 @@ int Parser::expression ()
         currentBB->pushInstruction (new Instruction (opc, o1, o2, line) );
         result = line;
         
-        /*if (tk == add)
-        {
-            //rop = resultAdd;
-            lex.next ();
-            int o2 = term ();
-            
-            
-            {
-                opCode opc = op_add;
-                //int operand1, operand2;
-                int line = ++sp;
-                if (o1.getKind () == variable)
-                {
-                    o1 = Operand (SSALine, varTable [o1.getVal ()]);
-                }
-                
-                if (o2.getKind () == variable)
-                {
-                    o2 = Operand (SSALine, varTable [o2.getVal ()]);
-                }
-                
-                //Instruction inst = Instruction (opc, o1, o2, line);
-                currentBB->pushInstruction (new Instruction (opc, o1, o2, line) );
-                o1 = Operand (SSALine, line);
-                
-                //r1 = Result (instruction, line);
-            }
-        }
-        else if (tk == sub)
-        {
-            //rop = resultSub;
-            lex.next ();
-            Operand o2 = term ();
-            
-            if (o1.getKind () == constant && o2.getKind () == constant)
-            {
-                o1 = Operand (constant, o1.getVal () - o2.getVal ());
-            }
-            else
-            {
-                opCode opc = op_sub;
-                //int operand1, operand2;
-                int line = ++sp;
-                if (o1.getKind () == variable)
-                {
-                    o1 = Operand (SSALine, varTable [o1.getVal ()]);
-                }
-                
-                if (o2.getKind () == variable)
-                {
-                    o2 = Operand (SSALine, varTable [o2.getVal ()]);
-                }
-                
-                //Instruction inst = Instruction (opc, o1, o2, line);
-                currentBB->pushInstruction (new Instruction (opc, o1, o2, line) );
-                o1 = Operand (SSALine, line);
-                
-                //r1 = Result (instruction, line);
-            }
-        }*/
-        
-        //Result r2 = term ();
-        //Compute (rop, &r1, &r2);
-        
         tk = lex.getToken ();
     }
     
     return result;
 }
 
-/*int Parser::ident ()
-{
-    int result = 0;
-    
-	token tk = lex.getToken ();
-	if (! (tk == identifier || tk == tk_read || tk == tk_write)) err ("ident");
-    
-    Operand res = Operand (SSALine, varTable [lex.getId ()]); // do we have this variable
-    
-    if (tk == tk_read) res = Operand (type_read, -1);
-    else if (tk == tk_write) res = Operand (type_write, -1);
-    
-    lex.next ();
-    
-    return result;
-}*/
-
 void Parser::relation ()
 {
-	expression ();
+	int o1 = expression ();
     
-    relOp ();
+    opCode opc = nop;
+    token tk = lex.getToken ();
+    switch (tk)
+    {
+        case eq:
+        {
+            opc = op_bne;
+            lex.next ();                /** Consuming eq */
+            break;
+        }
+        case neq:
+        {
+            opc = op_beq;
+            lex.next ();                /** Consuming neq */
+            break;
+        }
+        case less:
+        {
+            opc = op_bge;
+            lex.next ();                /** Consuming less */
+            break;
+        }
+        case le:
+        {
+            opc = op_bgt;
+            lex.next ();                /** Consuming le */
+            break;
+        }
+        case greater:
+        {
+            opc = op_ble;
+            lex.next ();                /** Consuming greater */
+            break;
+        }
+        case ge:
+        {
+            opc = op_blt;
+            lex.next ();                /** Consuming ge */
+            break;
+        }
+        default:
+        {
+            err ("Incorrect relation operation!");
+            break;
+        }
+    }
+    //relOp ();
 
-	expression ();
+	int o2 = expression ();
+    
+    int line = ++sp;
+    currentBB->pushInstruction (new Instruction (op_cmp, o1, o2, line) );
+    line = ++sp;
+    currentBB->pushInstruction (new Instruction (opc, line-1, -1/*unknown SSALine*/, line));
     
 }
 
@@ -691,77 +670,6 @@ int Parser::term ()
         int line = ++sp;
         currentBB->pushInstruction (new Instruction (opc, o1, o2, line) );
         result = line;
-        /*
-        if (tk == mul)
-        {
-            //rop = resultMul;
-            lex.next ();
-            Operand o2 = factor ();
-            
-            if (o1.getKind () == constant && o2.getKind () == constant)
-            {
-                o1 = Operand (constant, o1.getVal () * o2.getVal ());
-            }
-            else
-            {
-                opCode opc = op_mul;
-                //int operand1, operand2;
-                int line = ++sp;
-                if (o1.getKind () == variable)
-                {
-                    o1 = Operand (SSALine, varTable [o1.getVal ()]);
-                }
-                
-                if (o2.getKind () == variable)
-                {
-                    o2 = Operand (SSALine, varTable [o2.getVal ()]);
-                }
-                
-                
-                //Instruction inst = Instruction (opc, o1, o2, line);
-                currentBB->pushInstruction (new Instruction (opc, o1, o2, line));
-                o1 = Operand (SSALine, line);
-                
-                //r1 = Result (instruction, line);
-            }
-        }
-        else if (tk == divis)
-        {
-            //rop = resultDiv;
-            lex.next ();
-            Operand o2 = factor ();
-            
-            if (o1.getKind () == constant && o2.getKind () == constant)
-            {
-                if (o2.getVal () == 0) err ("DIVISION BY ZERO");
-                o1 = Operand (constant, o1.getVal () / o2.getVal ());
-            }
-            else
-            {
-                opCode opc = op_div;
-                //int operand1, operand2;
-                int line = ++sp;
-                if (o1.getKind () == variable)
-                {
-                    o1 = Operand (SSALine, varTable [o1.getVal ()]);
-                }
-                
-                if (o2.getKind () == variable)
-                {
-                    o2 = Operand (SSALine, varTable [o2.getVal ()]);
-                }
-                
-                
-                //Instruction inst = Instruction (opc, o1, o2, line);
-                currentBB->pushInstruction (new Instruction (opc, o1, o2, line) );
-                o1 = Operand (SSALine, line);
-                
-                //r1 = Result (instruction, line);
-            }
-        }*/
-        
-        //Result r2 = factor ();
-        //Compute (rop, &r1, &r2);
         
         tk = lex.getToken ();
     }
@@ -823,17 +731,63 @@ int Parser::factor ()
     return result;
 }
 
-/*Operand Parser::number ()
-{
-	token tk = lex.getToken ();
-	if (tk != num) err ("number");
-    Operand res = Operand (constant, lex.getVal ());
-    lex.next ();
-    return res;
-}*/
-
 void Parser::err (std::string arg)
 {
 	std::cout << "Error in a Parser:" << std::endl;
     std::cout << "      " << arg << std::endl;
+}
+
+void Parser::ifThenDiamond (BasicBlock* ifBB, BasicBlock* thenBB, BasicBlock* fiBB)
+{
+    ifBB->successors.push_back     (thenBB);
+    thenBB->predecessors.push_back (ifBB);
+    
+    ifBB->successors.push_back     (fiBB);
+    fiBB->predecessors.push_back   (ifBB);
+    
+    thenBB->successors.push_back   (fiBB);
+    fiBB->predecessors.push_back   (thenBB);
+    
+    Instruction* ifBranch = ifBB->body.back ();
+    int fiAddr = fiBB->body.front ()->getLine ();
+    ifBranch->setOperand2 (fiAddr);
+    
+    Instruction* thenBranch = thenBB->body.back ();
+    //int fiAddr = fiBB->body.front ()->getLine ();
+    thenBranch->setOperand1 (fiAddr);
+    
+    /*
+     @@@@
+     ADD PHI instructions!
+     */
+    
+}
+
+void Parser::ifThenElseDiamond (BasicBlock* ifBB, BasicBlock* thenBB, BasicBlock* elseBB, BasicBlock* fiBB)
+{
+    ifBB->successors.push_back     (thenBB);
+    thenBB->predecessors.push_back (ifBB);
+    
+    ifBB->successors.push_back     (elseBB);
+    elseBB->predecessors.push_back (ifBB);
+    
+    elseBB->successors.push_back   (fiBB);
+    fiBB->predecessors.push_back   (elseBB);
+    
+    thenBB->successors.push_back   (fiBB);
+    fiBB->predecessors.push_back   (thenBB);
+    
+    Instruction* ifBranch = ifBB->body.back ();
+    int elseAddr = elseBB->body.front ()->getLine ();
+    ifBranch->setOperand2 (elseAddr);
+    
+    Instruction* thenBranch = thenBB->body.back ();
+    int fiAddr = fiBB->body.front ()->getLine ();
+    thenBranch->setOperand1 (fiAddr);
+    
+    /*
+     @@@@
+     ADD PHI instructions!
+     */
+    
 }

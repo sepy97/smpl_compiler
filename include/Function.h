@@ -23,6 +23,7 @@ public:
     void pushFrontBB (BasicBlock* toInsert);
     void pushAfterBB (BasicBlock* toInsert, BasicBlock* after);
     
+    
     std::string toString ();
     
 private:
