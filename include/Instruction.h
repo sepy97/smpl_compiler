@@ -1,6 +1,6 @@
 #include <vector>
 #include <string>
-#include "Operand.h"
+//#include "Operand.h"
 
 enum opCode
 {
@@ -31,6 +31,8 @@ enum opCode
     op_read,
     op_write,
     op_writeNL,
+    
+    op_const,
 };
 
 class Instruction
@@ -39,12 +41,12 @@ public:
     Instruction (int line)
     {
         this->op = nop;
-        this->operand1 = Operand ();
-        this->operand2 = Operand ();
+        this->operand1 = -1;//Operand ();
+        this->operand2 = -1;//Operand ();
         this->SSALine = line;
     }
     
-    Instruction (opCode op, Operand operand1, Operand operand2, int line)
+    Instruction (opCode op, int operand1, int operand2, int line)
     {
         this->op = op;
         this->operand1 = operand1;
@@ -53,8 +55,8 @@ public:
     }
     
     void setOp (opCode op);
-    void setOperand1 (Operand operand1);
-    void setOperand2 (Operand operand2);
+    void setOperand1 (int operand1);
+    void setOperand2 (int operand2);
     
     bool operator==(const Instruction &i2) const
     {
@@ -69,7 +71,7 @@ public:
     
 private:
     opCode op;
-    Operand operand1, operand2;
+    int operand1, operand2;
     int SSALine;
     
     

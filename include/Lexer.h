@@ -96,9 +96,9 @@ private:
 	{"void", tk_void},
 	{"function", tk_function},
 	{"main", tk_main},
-    {"inputNum", tk_read},
-    {"outputNum", tk_write}
-    //{"writeNL", tk_writeNL}
+    {"InputNum", tk_read},
+    {"OutputNum", tk_write},
+    {"OutputNewLine", tk_writeNL}
     };
 
 };

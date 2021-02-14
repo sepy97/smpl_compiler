@@ -36,8 +36,8 @@ void Parser::parse ()
         //std::cout << m->body.size () << std::endl;
         
         std::cout << m->toString () << std::endl;
-        /*
-         for (auto& t : varTable)
+        
+        /* for (auto& t : varTable)
             std::cout << t.first << " " << t.second << std::endl;
         */
     }
@@ -47,7 +47,7 @@ void Parser::parse ()
 void Parser::computation ()
 {
     token tk = lex.getToken ();
-	if (tk != tk_main) err ("computation");
+	if (tk != tk_main) err ("computation_main");
     lex.next ();                    /** Consuming tk_main */
     
     tk = lex.getToken ();
@@ -65,21 +65,21 @@ void Parser::computation ()
         tk = lex.getToken ();
     }
 	tk = lex.getToken ();
-	if (tk != openCurlBracket) err ("computation");
+	if (tk != openCurlBracket) err ("computation_opCurl");
     lex.next ();                    /** Consuming bracket */
     
 	statSequence ();
 
 	tk = lex.getToken ();
-	if (tk != closeCurlBracket) err ("computation");
+	if (tk != closeCurlBracket) err ("computation_clCurl");
     lex.next ();                    /** Consuming bracket */
     
 	tk = lex.getToken ();
-	if (tk != dot) err ("computation");
+	if (tk != dot) err ("computation_dot");
     lex.next ();                    /** Consuming dot */
     
     tk = lex.getToken ();
-    if (tk != eof) err ("computation");          /** tk should be eof */
+    if (tk != eof) err ("computation_eof");          /** tk should be eof */
 }
 
 void Parser::varDecl ()
@@ -89,13 +89,17 @@ void Parser::varDecl ()
     token tk = lex.getToken ();
     while (tk == identifier)
     {
-        Operand o = ident ();
+        //Operand o = ident ();//
+        
+        varTable [lex.getId ()] = 0;
+        lex.next ();                            /** Consuming identifier */
+        /*
         if (o.getKind () == variable)
         {
             varTable [o.getVal ()] = 0; //Marking uninitialized variables with ssa line 0
         }
         else err ("Incorrect variable declaration");
-                             
+          */
         
         tk = lex.getToken ();
         if (tk == comma)
@@ -135,7 +139,8 @@ void Parser::typeDecl ()
             tk = lex.getToken ();
             if (tk != num) err ("typeDecl");
             
-            number ();
+            int num = lex.getVal ();
+            lex.next ();            /** Consuming array dimension */
             
             tk = lex.getToken ();
             if (tk != closeSqBracket) err ("typeDecl");
@@ -156,7 +161,11 @@ void Parser::funcDecl ()
     if (tk != tk_function) err ("funcDecl");
     lex.next ();                    /** Consuming tk_function */
     
-    ident ();
+    //ident ();
+    tk = lex.getToken ();
+    if (tk != identifier) err ("Incorrect function declaration!");
+    int funcID = lex.getId ();
+    lex.next ();                    /** Consuming function identifier */
     
     formalParam ();
     
@@ -180,7 +189,9 @@ void Parser::formalParam ()
     tk = lex.getToken ();
     while (tk == identifier)
     {
-        ident ();
+        int varID = lex.getId ();   /** Consuming variable from the argument */
+        lex.next ();
+        //ident ();
         
         tk = lex.getToken ();
         if (tk == comma)
@@ -236,17 +247,25 @@ void Parser::statSequence ()
         statement ();
         
         tk = lex.getToken ();
+        
+        //std::cout << "statSequence token: " << tk << std::endl;
         if (tk == semicolon)
         {
             lex.next ();            /** Consuming semicolon */
             tk = lex.getToken ();
+            //std::cout << "statSequence token: " << tk << std::endl;
         }
+        
+        //std::cout << "statSequence token: " << tk << std::endl;
     }
 }
 
 void Parser::statement ()
 {
-	token tk = lex.getToken ();
+    token tk = lex.getToken ();
+    
+   // std::cout << "statement token: " << tk << std::endl;
+    
 	switch (tk)
 	{
 		case tk_let:
@@ -291,15 +310,18 @@ void Parser::assignment ()
 {
     lex.next ();                    /** Consuming let */
     
-	Operand o1 = designator ();
-    if (o1.getKind () != variable) err ("Incorrect assignment");
+	int o1 = designator ();
+    //if (o1.getKind () != variable) err ("Incorrect assignment");
+    //std::cout << "assignment designator: " << o1 << std::endl;
 
 	token tk = lex.getToken ();
 	if (tk != assign) err ("assignment");
     lex.next ();                    /** Consuming assign */
 	
-	Operand o2 = expression ();
-    if (o2.getKind () == constant)
+	int o2 = expression ();
+   // std::cout << "assignment expression: " << o2 << std::endl;
+    
+    /*if (o2.getKind () == constant)
     {
         int line = ++sp;
         currentBB->pushInstruction (new Instruction (op_add, Operand (0), o2, line) );
@@ -323,57 +345,45 @@ void Parser::assignment ()
     {
         
     }
-    else // o2 is SSA line
-    {
-        if (o2.getVal () > 0)
+    else // o2 is SSA line*/
+    //{
+        if (o2 > 0)
         {
-            varTable [o1.getVal ()] = o2.getVal ();
+            varTable [o1] = o2;
         }
         else err ("Assigning non-existing SSA line");
-    }
+    //}
     
     
 }
 
-Operand Parser::funcCall ()
+int Parser::funcCall ()
 {
+    int result = 0;
+    
     lex.next ();                    /** Consuming call */
-    //tk = lex.getToken ();
-	Operand o1 = ident ();
-    if (o1.getKind () == type_read)
+    token tk = lex.getToken ();
+    if (tk == tk_read)
     {
+        lex.next ();                /** Consuming tk_read */
         lex.next ();                /** Consuming bracket */
         lex.next ();                /** Consuming bracket */
-        
-        //std::cout << sp << std::endl;
         
         int line = ++sp;
+        currentBB->pushInstruction (new Instruction (op_read, -1, -1, line) );
+        result = line;
         
-        //std::cout << line << std::endl;
-        //std::cout << sp << std::endl;
-        
-        currentBB->pushInstruction (new Instruction (op_read, o1, Operand (), line) );
-        o1 = Operand (SSALine, line);
     }
-    else if (o1.getKind () == type_write)
+    else if (tk == tk_write)
     {
+        lex.next ();                /** Consuming tk_write */
         lex.next ();                /** Consuming bracket */
-        //Operand o2 =
-        Operand o2 = ident ();
         
-        //std::cout << sp << std::endl;
-        
+        tk = lex.getToken ();
+        int o1 = expression ();
         int line = ++sp;
-        
-        //std::cout << line << std::endl;
-        //std::cout << sp << std::endl;
-        
-        if (o2.getKind () == variable)
-        {
-            o2 = Operand (SSALine, varTable [o2.getVal ()]);
-        }
-        currentBB->pushInstruction (new Instruction (op_write, o2, Operand (), line) );
-        o1 = Operand (SSALine, line);
+        currentBB->pushInstruction (new Instruction (op_write, o1, -1, line) );
+        result = line;
         
         lex.next ();                /** Consuming bracket */
         
@@ -402,7 +412,7 @@ Operand Parser::funcCall ()
         }
     }
     
-    return o1;
+    return result;
 }
 
 void Parser::ifStatement ()
@@ -458,11 +468,17 @@ void Parser::returnStatement ()
     }
 }
 
-Operand Parser::designator ()
+int Parser::designator ()
 {
-	Operand o1 = ident ();
+    int result = 0;
+	//int o1 = ident ();
     
     token tk = lex.getToken ();
+    if (tk != identifier) err ("Incorrect identifier!");
+    result = lex.getId ();
+    lex.next ();                    /** Consuming identifier */
+    
+    tk = lex.getToken ();
     while (tk == openSqBracket)
     {
         lex.next ();                /** Consuming square bracket */
@@ -475,29 +491,46 @@ Operand Parser::designator ()
         tk = lex.getToken ();
     }
     
-    return o1;
+    return result;
 }
 
-Operand Parser::expression ()
+int Parser::expression ()
 {
-	Operand o1 = term ();
+    int result = 0;
+    
+	int o1 = term ();
+    
+    //std::cout << "expression term: " << o1 << std::endl;
+    result = o1;
+    
     //resultOp rop;
 
 	token tk = lex.getToken ();
     //if (tk != add && tk != sub) err ("expression");
     while (tk == add || tk == sub)
     {
-        if (tk == add)
+        opCode opc = op_add;
+        if (tk == sub) opc = op_sub;
+        lex.next ();                /** Consuming add/sub */
+        int o2 = term ();
+        
+        /*if (o1.getKind () == constant && o2.getKind () == constant)
+        {
+            o1 = Operand (constant, o1.getVal () + o2.getVal ());
+        }
+        else*/
+        
+        int line = ++sp;
+        currentBB->pushInstruction (new Instruction (opc, o1, o2, line) );
+        result = line;
+        
+        /*if (tk == add)
         {
             //rop = resultAdd;
-            lex.next ();                /** Consuming add */
-            Operand o2 = term ();
+            lex.next ();
+            int o2 = term ();
             
-            if (o1.getKind () == constant && o2.getKind () == constant)
-            {
-                o1 = Operand (constant, o1.getVal () + o2.getVal ());
-            }
-            else
+            
             {
                 opCode opc = op_add;
                 //int operand1, operand2;
@@ -512,23 +545,8 @@ Operand Parser::expression ()
                     o2 = Operand (SSALine, varTable [o2.getVal ()]);
                 }
                 
-                /*if ( (r1.getKind () == variable || r1.getKind () == instruction) && r2.getKind () == constant)
-                {
-                    operand1 = r1.getSSAline ();
-                    operand2 = r2.getVal ();
-                }
-                else if ( (r2.getKind () == variable || r2.getKind () == instruction) && r1.getKind () == constant)
-                {
-                    operand1 = r1.getVal ();
-                    operand2 = r2.getSSAline ();
-                }
-                else
-                {
-                    operand1 = r1.getSSAline ();
-                    operand2 = r2.getSSAline ();
-                }*/
-                //Instruction inst = Instruction (opc, o1/*perand1*/, o2/*perand2*/, line);
-                currentBB->pushInstruction (new Instruction (opc, o1, o2, line) /*inst*/);
+                //Instruction inst = Instruction (opc, o1, o2, line);
+                currentBB->pushInstruction (new Instruction (opc, o1, o2, line) );
                 o1 = Operand (SSALine, line);
                 
                 //r1 = Result (instruction, line);
@@ -537,7 +555,7 @@ Operand Parser::expression ()
         else if (tk == sub)
         {
             //rop = resultSub;
-            lex.next ();                /** Consuming sub */
+            lex.next ();
             Operand o2 = term ();
             
             if (o1.getKind () == constant && o2.getKind () == constant)
@@ -559,28 +577,13 @@ Operand Parser::expression ()
                     o2 = Operand (SSALine, varTable [o2.getVal ()]);
                 }
                 
-                /*if ( (r1.getKind () == variable || r1.getKind () == instruction) && r2.getKind () == constant)
-                {
-                    operand1 = r1.getSSAline ();
-                    operand2 = r2.getVal ();
-                }
-                else if ( (r2.getKind () == variable || r2.getKind () == instruction) && r1.getKind () == constant)
-                {
-                    operand1 = r1.getVal ();
-                    operand2 = r2.getSSAline ();
-                }
-                else
-                {
-                    operand1 = r1.getSSAline ();
-                    operand2 = r2.getSSAline ();
-                }*/
-                //Instruction inst = Instruction (opc, o1/*perand1*/, o2/*perand2*/, line);
-                currentBB->pushInstruction (new Instruction (opc, o1, o2, line) /*inst*/);
+                //Instruction inst = Instruction (opc, o1, o2, line);
+                currentBB->pushInstruction (new Instruction (opc, o1, o2, line) );
                 o1 = Operand (SSALine, line);
                 
                 //r1 = Result (instruction, line);
             }
-        }
+        }*/
         
         //Result r2 = term ();
         //Compute (rop, &r1, &r2);
@@ -588,22 +591,25 @@ Operand Parser::expression ()
         tk = lex.getToken ();
     }
     
-    return o1;
+    return result;
 }
 
-Operand Parser::ident ()
+/*int Parser::ident ()
 {
+    int result = 0;
+    
 	token tk = lex.getToken ();
 	if (! (tk == identifier || tk == tk_read || tk == tk_write)) err ("ident");
     
-    Operand res = Operand (variable, lex.getId ());
+    Operand res = Operand (SSALine, varTable [lex.getId ()]); // do we have this variable
     
     if (tk == tk_read) res = Operand (type_read, -1);
     else if (tk == tk_write) res = Operand (type_write, -1);
     
-    lex.next ();                        /** Consuming id */
-    return res;
-}
+    lex.next ();
+    
+    return result;
+}*/
 
 void Parser::relation ()
 {
@@ -658,19 +664,38 @@ void Parser::relOp ()
     }
 }
 
-Operand Parser::term ()
+int Parser::term ()
 {
-	Operand o1 = factor ();
+    int result = 0;
+    
+	int o1 = factor ();
+    result = o1;
+    //std::cout << "term factor: " << o1 << std::endl;
     //resultOp rop;
 
 	token tk = lex.getToken ();
     
     while (tk == mul || tk == divis)
     {
+        opCode opc = op_mul;
+        if (tk == sub) opc = op_div;
+        lex.next ();                /** Consuming mul/div */
+        int o2 = term ();
+        
+        /*if (o1.getKind () == constant && o2.getKind () == constant)
+        {
+            o1 = Operand (constant, o1.getVal () + o2.getVal ());
+        }
+        else*/
+        
+        int line = ++sp;
+        currentBB->pushInstruction (new Instruction (opc, o1, o2, line) );
+        result = line;
+        /*
         if (tk == mul)
         {
             //rop = resultMul;
-            lex.next ();                /** Consuming mul */
+            lex.next ();
             Operand o2 = factor ();
             
             if (o1.getKind () == constant && o2.getKind () == constant)
@@ -692,23 +717,9 @@ Operand Parser::term ()
                     o2 = Operand (SSALine, varTable [o2.getVal ()]);
                 }
                 
-                /*if ( (r1.getKind () == variable || r1.getKind () == instruction) && r2.getKind () == constant)
-                {
-                    operand1 = r1.getSSAline ();
-                    operand2 = r2.getVal ();
-                }
-                else if ( (r2.getKind () == variable || r2.getKind () == instruction) && r1.getKind () == constant)
-                {
-                    operand1 = r1.getVal ();
-                    operand2 = r2.getSSAline ();
-                }
-                else
-                {
-                    operand1 = r1.getSSAline ();
-                    operand2 = r2.getSSAline ();
-                }*/
-                //Instruction inst = Instruction (opc, o1/*perand1*/, o2/*perand2*/, line);
-                currentBB->pushInstruction (new Instruction (opc, o1, o2, line)/*inst*/);
+                
+                //Instruction inst = Instruction (opc, o1, o2, line);
+                currentBB->pushInstruction (new Instruction (opc, o1, o2, line));
                 o1 = Operand (SSALine, line);
                 
                 //r1 = Result (instruction, line);
@@ -717,7 +728,7 @@ Operand Parser::term ()
         else if (tk == divis)
         {
             //rop = resultDiv;
-            lex.next ();                /** Consuming divis */
+            lex.next ();
             Operand o2 = factor ();
             
             if (o1.getKind () == constant && o2.getKind () == constant)
@@ -740,54 +751,14 @@ Operand Parser::term ()
                     o2 = Operand (SSALine, varTable [o2.getVal ()]);
                 }
                 
-                /*if (r1.getKind () == variable)
-                {
-                    operand1 = varTable [r1.getVal ()];
-                }
-                else if (r1.getKind () == instruction)
-                {
-                    operand1 = r1.getVal ();
-                }
-                else if (r1.getKind () == constant)
-                {
-                    operand1 = r1.getVal;
-                }
                 
-                if (r2.getKind () == variable)
-                {
-                    operand2 = varTable [r2.getVal ()];
-                }
-                else if (r2.getKind () == instruction)
-                {
-                    operand2 = r2.getVal ();
-                }
-                else if (r2.getKind () == constant)
-                {
-                    operand2 = r2.getVal;
-                }*/
-                /*
-                if ( (r1.getKind () == variable || r1.getKind () == instruction) && r2.getKind () == constant)
-                {
-                    operand1 = r1.getSSAline ();
-                    operand2 = r2.getVal ();
-                }
-                else if ( (r2.getKind () == variable || r2.getKind () == instruction) && r1.getKind () == constant)
-                {
-                    operand1 = r1.getVal ();
-                    operand2 = r2.getSSAline ();
-                }
-                else
-                {
-                    operand1 = r1.getSSAline ();
-                    operand2 = r2.getSSAline ();
-                }*/
-                //Instruction inst = Instruction (opc, o1/*perand1*/, o2/*perand2*/, line);
-                currentBB->pushInstruction (new Instruction (opc, o1, o2, line) /*inst*/);
+                //Instruction inst = Instruction (opc, o1, o2, line);
+                currentBB->pushInstruction (new Instruction (opc, o1, o2, line) );
                 o1 = Operand (SSALine, line);
                 
                 //r1 = Result (instruction, line);
             }
-        }
+        }*/
         
         //Result r2 = factor ();
         //Compute (rop, &r1, &r2);
@@ -795,43 +766,51 @@ Operand Parser::term ()
         tk = lex.getToken ();
     }
     
-    return o1;
+    return result;
 }
 
-Operand Parser::factor ()
+int Parser::factor ()
 {
-    Operand o1;
+    int result = 0;
+    
+    //Operand o1;
     token tk = lex.getToken ();
     switch (tk)
     {
         case identifier:
         {
-            o1 = designator ();
-            
+            int o1 = designator ();
+            result = varTable [o1];
             break;
         }
         case num:
         {
-            o1 = number ();
-            
+            //o1 = number ();
+            int line = ++sp;
+            currentBB->pushInstruction (new Instruction (op_const, lex.getVal (), -1, line) );
+            result = line;
+            lex.next ();                /** Consuming a number */
             break;
         }
         case openBracket:
         {
             lex.next ();                /** Consuming bracket */
             
-            o1 = expression ();
+            int o1 = expression ();
             
             tk = lex.getToken ();
             if (tk != closeBracket) err ("factor");
             lex.next ();                /** Consuming bracket */
+            
+            result = o1;
             break;
         }
         case tk_call:
         {
-            o1 = funcCall ();
+            int o1 = funcCall ();
             //std::cout << "func call " << std::endl;
             //std::cout << sp << std::endl;
+            result = o1;
             break;
         }
         default:
@@ -841,17 +820,17 @@ Operand Parser::factor ()
         }
     }
     
-    return o1;
+    return result;
 }
 
-Operand Parser::number ()
+/*Operand Parser::number ()
 {
 	token tk = lex.getToken ();
 	if (tk != num) err ("number");
     Operand res = Operand (constant, lex.getVal ());
     lex.next ();
     return res;
-}
+}*/
 
 void Parser::err (std::string arg)
 {

@@ -106,19 +106,19 @@ private:
 	void statement ();
 
 	void assignment ();
-	Operand funcCall ();
+	int funcCall ();
 	void ifStatement ();
 	void whileStatement ();
 	void returnStatement ();
 
-	Operand designator ();
-	Operand factor ();
-	Operand term ();
-	Operand expression ();
+	int designator ();
+	int factor ();
+	int term ();
+	int expression ();
 	void relation ();
 
-	Operand ident ();
-	Operand number ();
+	//int ident ();
+	//Operand number ();
 
 	void relOp ();
 	//@@@@ void digit ();
@@ -133,8 +133,6 @@ private:
 *	"Stack Pointer" -- depth of a current expression stack
 */
 	int sp;
-    
-    //void Compute (resultOp op, Result* x, Result* y);
     
     Module* m;
     Function* currentFunc;

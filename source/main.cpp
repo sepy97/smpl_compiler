@@ -1,16 +1,24 @@
 #include <string>
 #include "Parser.h"
 
-std::string filetoCompile;
+std::string fileToCompile;
 
-int main ()
+int main (int argc, char* argv[])
 {
+    
+    for (int i = 1; i < argc; i++)
+    {
+        fileToCompile = argv[i];
+        
+        Parser tmp (fileToCompile);
+        tmp.parse ();
+    }
 	//Lexer tmp ("inp.txt");
-    Parser tmp ("inp.txt");
+    //Parser tmp ("inp.txt");
     
     //std::cout << "BEFORE parse" << std::endl;
     
-    tmp.parse ();
+    //tmp.parse ();
 /*
 	std::cout << "Lexer constructed" << std::endl;
 
