@@ -29,15 +29,15 @@ private:
 	void statement ();
 
 	void assignment ();
-	int funcCall ();
+	int  funcCall ();
 	void ifStatement ();
 	void whileStatement ();
 	void returnStatement ();
 
-	int designator ();
-	int factor ();
-	int term ();
-	int expression ();
+	int  designator ();
+	int  factor ();
+	int  term ();
+	int  expression ();
 	void relation ();
 	void relOp ();
 
@@ -46,12 +46,13 @@ private:
 */
 	int sp;
     
-    Module* m;
-    Function* currentFunc;
+    Module*     m;
+    Function*   currentFunc;
     BasicBlock* currentBB;
     
-    void ifThenDiamond (BasicBlock* ifBB, BasicBlock* thenBB, BasicBlock* fiBB);
-    void ifThenElseDiamond (BasicBlock* ifBB, BasicBlock* thenBB, BasicBlock* elseBB, BasicBlock* fiBB);
+    void ifThenDiamond     (BasicBlock* ifBB,     BasicBlock* thenEntryBB, BasicBlock* thenExitBB,  BasicBlock* fiBB);
+    void ifThenElseDiamond (BasicBlock* ifBB,     BasicBlock* thenEntryBB, BasicBlock* elseEntryBB, BasicBlock* thenExitBB,  BasicBlock* elseExitBB, BasicBlock* fiBB);
+    void whileDoDiamond    (BasicBlock* beforeBB, BasicBlock* whileBB,     BasicBlock* doBB,        BasicBlock* jmpBackBB,   BasicBlock* odBB);
     
 /**
 *  varTable stores variable id (first) and SSA line number (second)

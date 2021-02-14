@@ -376,96 +376,97 @@ int Parser::funcCall ()
 
 void Parser::ifStatement ()
 {
-    //std::cout << "ifStatement! " << std::endl;
-    
-    BasicBlock* thenBB = new BasicBlock ();
-    BasicBlock* elseBB = new BasicBlock ();
-    BasicBlock* fiBB   = new BasicBlock ();
+    BasicBlock* thenEntryBB = new BasicBlock ();
+    BasicBlock* elseEntryBB = new BasicBlock ();
+    BasicBlock* fiBB        = new BasicBlock ();
     
     BasicBlock* ifBB = currentBB;
-    //int line = 0;//++sp;
-    
-    //std::cout << "ifStatement ---- all BB generated! " << std::endl;
     
     lex.next ();                    /** Consuming if */
 
 	relation ();
     
-    //std::cout << "ifStatement ---- relation passed! " << std::endl;
-
 	token tk = lex.getToken ();
-	if (tk != tk_then) err ("ifStatement");
+	if (tk != tk_then) err ("Syntax error in an if statement!");
     lex.next ();                    /** Consuming then */
-	//generate thenBB
-    //BasicBlock* thenBB = new BasicBlock ();
-    
-    //@@@@
-    currentBB = thenBB;
+	
+    currentBB = thenEntryBB;
 	statSequence ();
     
-    int line = ++sp;
-    //thenBB->pushInstruction (new Instruction (op_bra, -1 /* yet unknown */, -1, line));
-    //currentFunc->linkBB (ifBB, thenBB);
+    BasicBlock* thenExitBB = currentBB;
+    BasicBlock* elseExitBB;
     
-    //std::cout << "ifStatement ---- thenBB passed! " << std::endl;
-
+    int line = sp;
+    
 	tk = lex.getToken ();
     bool wasElse = false;
 	if (tk == tk_else)
 	{
         wasElse = true;
-        thenBB->pushInstruction (new Instruction (op_bra, -1 /* yet unknown */, -1, line));
+        line = ++sp;
+        thenExitBB->pushInstruction (new Instruction (op_bra, -1 /* yet unknown */, -1, line));
         lex.next ();                /** Consuming else */
-        //generate elseBB
-        //BasicBlock* elseBB = new BasicBlock ();
-        currentBB = elseBB;
+        
+        currentBB = elseEntryBB;
 		statSequence ();
-        
-        
-        //std::cout << "ifStatement ---- elseBB passed! " << std::endl;
-        
-       // line = ++sp;
-       // Instruction* elseBranch = new Instruction (op_bra, -1/*unknown line*/, -1, line);
-        //elseBB->pushInstruction (op_bra, -1/*unknown line*/, -1, line)
-        //currentFunc->linkBB (ifBB, elseBB);
-	}
+        elseExitBB = currentBB;
+    }
 	
 	tk = lex.getToken ();
-	if (tk != tk_fi) err ("ifStatement");
+	if (tk != tk_fi) err ("Syntax error in an if statement!");
     lex.next ();                    /** Consuming fi */
-    //generate fiBB
-    //BasicBlock* fiBB = new BasicBlock ();
-    currentBB = fiBB;
+    
     //@@@@ add phi functions
-    fiBB->pushInstruction (new Instruction (++sp));
+    line = ++sp;
+    fiBB->pushInstruction (new Instruction (line));
     
-    //std::cout << "ifStatement ---- fiBB passed! " << std::endl;
+    if (wasElse) ifThenElseDiamond (ifBB, thenEntryBB, elseEntryBB, thenExitBB, elseExitBB, fiBB);
+    else ifThenDiamond (ifBB, thenEntryBB, thenExitBB, fiBB);
     
+    fiBB->body.pop_back ();    /** Removing nop instruction out of fiBB  */
+    sp--;
     
-   // elseBB->pushInstruction (elseBranch);
-    /*
-    currentFunc->linkBB (thenBB, fiBB);
-    if (wasElse) currentFunc->linkBB (elseBB, fiBB);*/
-    if (wasElse) ifThenElseDiamond (ifBB, thenBB, elseBB, fiBB);
-    else ifThenDiamond (ifBB, thenBB, fiBB);
-    
+    currentBB = fiBB;
 }
 
 void Parser::whileStatement ()
 {
+    BasicBlock* whileBB = new BasicBlock ();
+    BasicBlock* doBB    = new BasicBlock ();
+    BasicBlock* odBB    = new BasicBlock ();
+    
+    BasicBlock* beforeBB = currentBB;
+    
     lex.next ();                    /** Consuming while */
-
+    
+    currentBB = whileBB;
 	relation ();
 
 	token tk = lex.getToken ();
-	if (tk != tk_do) err ("whileStatement");
+	if (tk != tk_do) err ("Syntax error in a while statement!");
     lex.next ();                    /** Consuming do */
 
-	statSequence ();
+    currentBB = doBB;
+	
+    statSequence ();
+    
+    BasicBlock* jmpBackBB = currentBB;
+    int line = ++sp;
+    jmpBackBB->pushInstruction (new Instruction (op_bra, -1 /* yet unknown */, -1, line));
 
 	tk = lex.getToken ();
-	if (tk != tk_od) err ("whileStatement");
+	if (tk != tk_od) err ("Syntax error in a while statement!");
     lex.next ();                    /** Consuming od */
+    
+    //@@@@ add phi functions
+    odBB->pushInstruction (new Instruction (++sp));
+    
+    whileDoDiamond (beforeBB, whileBB, doBB, jmpBackBB, odBB);
+    
+    odBB->body.pop_back ();    /** Removing nop instruction out of odBB  */
+    sp--;
+    
+    currentBB = odBB;
 }
 
 void Parser::returnStatement ()
@@ -737,24 +738,24 @@ void Parser::err (std::string arg)
     std::cout << "      " << arg << std::endl;
 }
 
-void Parser::ifThenDiamond (BasicBlock* ifBB, BasicBlock* thenBB, BasicBlock* fiBB)
+void Parser::ifThenDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, BasicBlock* thenExitBB, BasicBlock* fiBB)
 {
-    ifBB->successors.push_back     (thenBB);
-    thenBB->predecessors.push_back (ifBB);
+    ifBB->successors.push_back     (thenEntryBB);
+    thenEntryBB->predecessors.push_back (ifBB);
     
     ifBB->successors.push_back     (fiBB);
     fiBB->predecessors.push_back   (ifBB);
     
-    thenBB->successors.push_back   (fiBB);
-    fiBB->predecessors.push_back   (thenBB);
+    thenExitBB->successors.push_back   (fiBB);
+    fiBB->predecessors.push_back   (thenExitBB);
     
     Instruction* ifBranch = ifBB->body.back ();
     int fiAddr = fiBB->body.front ()->getLine ();
     ifBranch->setOperand2 (fiAddr);
     
-    Instruction* thenBranch = thenBB->body.back ();
+    //Instruction* thenExitBranch = thenExitBB->body.back ();
     //int fiAddr = fiBB->body.front ()->getLine ();
-    thenBranch->setOperand1 (fiAddr);
+    //thenExitBranch->setOperand1 (fiAddr);
     
     /*
      @@@@
@@ -763,31 +764,63 @@ void Parser::ifThenDiamond (BasicBlock* ifBB, BasicBlock* thenBB, BasicBlock* fi
     
 }
 
-void Parser::ifThenElseDiamond (BasicBlock* ifBB, BasicBlock* thenBB, BasicBlock* elseBB, BasicBlock* fiBB)
+void Parser::ifThenElseDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, BasicBlock* elseEntryBB, BasicBlock* thenExitBB, BasicBlock* elseExitBB, BasicBlock* fiBB)
 {
-    ifBB->successors.push_back     (thenBB);
-    thenBB->predecessors.push_back (ifBB);
+    ifBB->successors.push_back     (thenEntryBB);
+    thenEntryBB->predecessors.push_back (ifBB);
     
-    ifBB->successors.push_back     (elseBB);
-    elseBB->predecessors.push_back (ifBB);
+    ifBB->successors.push_back     (elseEntryBB);
+    elseEntryBB->predecessors.push_back (ifBB);
     
-    elseBB->successors.push_back   (fiBB);
-    fiBB->predecessors.push_back   (elseBB);
+    elseExitBB->successors.push_back   (fiBB);
+    fiBB->predecessors.push_back   (elseExitBB);
     
-    thenBB->successors.push_back   (fiBB);
-    fiBB->predecessors.push_back   (thenBB);
+    thenExitBB->successors.push_back   (fiBB);
+    fiBB->predecessors.push_back   (thenExitBB);
     
     Instruction* ifBranch = ifBB->body.back ();
-    int elseAddr = elseBB->body.front ()->getLine ();
-    ifBranch->setOperand2 (elseAddr);
+    int elseEntryAddr = elseEntryBB->body.front ()->getLine ();
+    ifBranch->setOperand2 (elseEntryAddr);
     
-    Instruction* thenBranch = thenBB->body.back ();
+    Instruction* thenExitBranch = thenExitBB->body.back ();
     int fiAddr = fiBB->body.front ()->getLine ();
-    thenBranch->setOperand1 (fiAddr);
+    thenExitBranch->setOperand1 (fiAddr);
     
     /*
      @@@@
      ADD PHI instructions!
      */
     
+}
+
+void Parser::whileDoDiamond (BasicBlock* beforeBB, BasicBlock* whileBB, BasicBlock* doBB, BasicBlock* jmpBackBB, BasicBlock* odBB)
+{
+    beforeBB->successors.push_back  (whileBB);
+    whileBB->predecessors.push_back (beforeBB);
+    
+    whileBB->successors.push_back   (doBB);
+    doBB->predecessors.push_back    (whileBB);
+    
+    jmpBackBB->successors.push_back (whileBB);
+    whileBB->predecessors.push_back (jmpBackBB);
+    
+    jmpBackBB->successors.push_back (odBB);
+    odBB->predecessors.push_back    (jmpBackBB);
+    
+    whileBB->successors.push_back   (odBB);
+    odBB->predecessors.push_back    (whileBB);
+    
+    //int line = ++sp;
+    Instruction* jmpBackAddr = jmpBackBB->body.back ();
+    int whileLine = whileBB->body.front ()->getLine ();
+    jmpBackAddr->setOperand1 (whileLine);// ->pushInstruction (new Instruction (op_bra, whileLine, -1, line));
+    
+    Instruction* whileBranch = whileBB->body.back ();
+    int odLine = odBB->body.front ()->getLine ();
+    whileBranch->setOperand2 (odLine);
+    
+    /*
+     @@@@
+     ADD PHI instructions!
+     */
 }
