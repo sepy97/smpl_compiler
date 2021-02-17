@@ -37,6 +37,8 @@ void Parser::parse ()
         
         std::cout << m->toString () << std::endl;
         
+       // std::cout << "FINISHED!!!!" << std::endl;
+        
         /* for (auto& t : varTable)
             std::cout << t.first << " " << t.second << std::endl;
         */
@@ -380,6 +382,11 @@ void Parser::ifStatement ()
     BasicBlock* elseEntryBB = new BasicBlock ();
     BasicBlock* fiBB        = new BasicBlock ();
     
+    //if ()
+    bool hasNestedBranch = false;
+    
+    currentJoinBB = fiBB;
+    
     BasicBlock* ifBB = currentBB;
     
     lex.next ();                    /** Consuming if */
@@ -390,13 +397,21 @@ void Parser::ifStatement ()
 	if (tk != tk_then) err ("Syntax error in an if statement!");
     lex.next ();                    /** Consuming then */
 	
+    std::map <int, int> ifVarTable (varTable);          /** Making a local copy of varTable before all possible assignments in thenBB */
+    
     currentBB = thenEntryBB;
 	statSequence ();
     
     BasicBlock* thenExitBB = currentBB;
     BasicBlock* elseExitBB;
     
+    if (thenExitBB != thenEntryBB) hasNestedBranch = true;
+    //bool nestedIf =
     int line = sp;
+    
+    std::map <int, int> thenVarTable (varTable);          /** Making a local copy of varTable after thenBB and before all possible assignments in elseBB */
+    
+    varTable = std::map <int, int> (ifVarTable);
     
 	tk = lex.getToken ();
     bool wasElse = false;
@@ -410,8 +425,12 @@ void Parser::ifStatement ()
         currentBB = elseEntryBB;
 		statSequence ();
         elseExitBB = currentBB;
+        
+        if (elseExitBB != elseEntryBB) hasNestedBranch = true;
     }
-	
+    
+    std::map <int, int> elseVarTable (varTable);          /** Making a local copy of varTable after elseBB */
+    
 	tk = lex.getToken ();
 	if (tk != tk_fi) err ("Syntax error in an if statement!");
     lex.next ();                    /** Consuming fi */
@@ -420,11 +439,11 @@ void Parser::ifStatement ()
     line = ++sp;
     fiBB->pushInstruction (new Instruction (line));
     
-    if (wasElse) ifThenElseDiamond (ifBB, thenEntryBB, elseEntryBB, thenExitBB, elseExitBB, fiBB);
-    else ifThenDiamond (ifBB, thenEntryBB, thenExitBB, fiBB);
+    if (wasElse) ifThenElseDiamond (ifBB, thenEntryBB, elseEntryBB, thenExitBB, elseExitBB, fiBB, &ifVarTable, &thenVarTable, &elseVarTable);
+    else ifThenDiamond (ifBB, thenEntryBB, thenExitBB, fiBB, &ifVarTable, &thenVarTable);
     
     fiBB->body.pop_back ();    /** Removing nop instruction out of fiBB  */
-    sp--;
+    //sp--;
     
     currentBB = fiBB;
 }
@@ -738,7 +757,7 @@ void Parser::err (std::string arg)
     std::cout << "      " << arg << std::endl;
 }
 
-void Parser::ifThenDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, BasicBlock* thenExitBB, BasicBlock* fiBB)
+void Parser::ifThenDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, BasicBlock* thenExitBB, BasicBlock* fiBB, std::map <int, int>* ifVarTable, std::map <int, int>* thenVarTable)
 {
     ifBB->successors.push_back     (thenEntryBB);
     thenEntryBB->predecessors.push_back (ifBB);
@@ -762,9 +781,22 @@ void Parser::ifThenDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, BasicBloc
      ADD PHI instructions!
      */
     
+    for (auto const& var: *ifVarTable)
+    {
+        if ( (*ifVarTable) [var.first] != (*thenVarTable) [var.first])
+        {
+            if ((*ifVarTable) [var.first] != 0 && (*thenVarTable) [var.first] != 0) /** Variable is initialized on both paths */
+            {
+                int line = ++sp;
+                fiBB->phiInstructions.push_back ( std::pair<Instruction*, int> (new Instruction (op_phi, (*thenVarTable) [var.first], (*ifVarTable) [var.first], line), var.first));
+                varTable [var.first] = line;
+            }
+        }
+    }
+    
 }
 
-void Parser::ifThenElseDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, BasicBlock* elseEntryBB, BasicBlock* thenExitBB, BasicBlock* elseExitBB, BasicBlock* fiBB)
+void Parser::ifThenElseDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, BasicBlock* elseEntryBB, BasicBlock* thenExitBB, BasicBlock* elseExitBB, BasicBlock* fiBB, std::map <int, int>* ifVarTable, std::map <int, int>* thenVarTable, std::map <int, int>* elseVarTable)
 {
     ifBB->successors.push_back     (thenEntryBB);
     thenEntryBB->predecessors.push_back (ifBB);
@@ -790,6 +822,19 @@ void Parser::ifThenElseDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, Basic
      @@@@
      ADD PHI instructions!
      */
+    
+    for (auto const& var: *thenVarTable)
+    {
+        if ( (*thenVarTable) [var.first] != (*elseVarTable) [var.first])
+        {
+            if ((*elseVarTable) [var.first] != 0 && (*thenVarTable) [var.first] != 0) /** Variable is initialized on both paths */
+            {
+                int line = ++sp;
+                fiBB->phiInstructions.push_back ( std::pair<Instruction*, int> (new Instruction (op_phi, (*thenVarTable) [var.first], (*elseVarTable) [var.first], line), var.first));
+                varTable [var.first] = line;
+            }
+        }
+    }
     
 }
 

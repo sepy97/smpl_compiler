@@ -38,45 +38,50 @@ std::string Instruction::toString ()
         }
         case op_add:
         {
-            res += "add ";
+            res += "add (";
             res += std::to_string (operand1);
-            res += " ";
+            res += ") (";
             res += std::to_string (operand2);
+            res += ")";
             break;
         }
         case op_sub:
         {
-            res += "sub ";
+            res += "sub (";
             res += std::to_string (operand1);
-            res += " ";
+            res += ") (";
             res += std::to_string (operand2);
+            res += ")";
             break;
         }
         case op_mul:
         {
-            res += "mul ";
+            res += "mul (";
             res += std::to_string (operand1);
-            res += " ";
+            res += ") (";
             res += std::to_string (operand2);
+            res += ")";
             break;
         }
         case op_div:
         {
-            res += "div ";
+            res += "div (";
             res += std::to_string (operand1);
-            res += " ";
+            res += ") (";
             res += std::to_string (operand2);
+            res += ")";
             break;
         }
         case op_cmp:
         {
-            res += "cmp ";
+            res += "cmp (";
             res += std::to_string (operand1);
-            res += " ";
+            res += ") (";
             res += std::to_string (operand2);
+            res += ")";
             break;
         }
-        case op_adda:
+        case op_adda:   //@@@@
         {
             res += "adda ";
             res += std::to_string (operand1);
@@ -100,10 +105,11 @@ std::string Instruction::toString ()
         }
         case op_phi:
         {
-            res += "phi ";
+            res += "phi (";
             res += std::to_string (operand1);
-            res += " ";
+            res += ") (";
             res += std::to_string (operand2);
+            res += ")";
             break;
         }
         case op_end:
@@ -113,56 +119,63 @@ std::string Instruction::toString ()
         }
         case op_bra:
         {
-            res += "bra ";
+            res += "bra (";
             res += std::to_string (operand1);
+            res += ")";
             break;
         }
         case op_bne:
         {
-            res += "bne ";
+            res += "bne (";
             res += std::to_string (operand1);
-            res += " ";
+            res += ") (";
             res += std::to_string (operand2);
+            res += ")";
             break;
         }
         case op_beq:
         {
-            res += "beq ";
+            res += "beq (";
             res += std::to_string (operand1);
-            res += " ";
+            res += ") (";
             res += std::to_string (operand2);
+            res += ")";
             break;
         }
         case op_ble:
         {
-            res += "ble ";
+            res += "ble (";
             res += std::to_string (operand1);
-            res += " ";
+            res += ") (";
             res += std::to_string (operand2);
+            res += ")";
             break;
         }
         case op_blt:
         {
-            res += "blt ";
+            res += "blt (";
             res += std::to_string (operand1);
-            res += " ";
+            res += ") (";
             res += std::to_string (operand2);
+            res += ")";
             break;
         }
         case op_bge:
         {
-            res += "bge ";
+            res += "bge (";
             res += std::to_string (operand1);
-            res += " ";
+            res += ") (";
             res += std::to_string (operand2);
+            res += ")";
             break;
         }
         case op_bgt:
         {
-            res += "bgt ";
+            res += "bgt (";
             res += std::to_string (operand1);
-            res += " ";
+            res += ") (";
             res += std::to_string (operand2);
+            res += ")";
             break;
         }
         case op_read:
@@ -172,8 +185,9 @@ std::string Instruction::toString ()
         }
         case op_write:
         {
-            res += "write ";
+            res += "write (";
             res += std::to_string (operand1);
+            res += ")";
             break;
         }
         case op_writeNL:
@@ -183,7 +197,7 @@ std::string Instruction::toString ()
         }
         case op_const:
         {
-            res += "const ";
+            res += "const #";
             res += std::to_string (operand1);
             break;
         }

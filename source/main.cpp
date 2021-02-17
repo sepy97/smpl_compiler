@@ -30,5 +30,5 @@ int main (int argc, char* argv[])
 	std::cout << "next function called: " << tmp.getToken () << " " << tmp.getId () << " " << tmp.getVal () << std::endl;
 */
 
-	return 0;
+//	return 0;
 }

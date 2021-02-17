@@ -27,9 +27,16 @@ void BasicBlock::addSucc (BasicBlock* succ)
 std::string BasicBlock::toString ()
 {
     std::string res = "";
-    if (this->body.empty () ) res += "<empty>\n";
+    if (this->body.empty () && this->phiInstructions.empty () ) res += "<empty>\n";
     else
     {
+        
+        for (std::pair<Instruction* , int> i: this->phiInstructions)
+        {
+                res += i.first->toString ();
+                res += "\n";
+        }
+        
         for (Instruction* i: this->body)
         {
             res += i->toString ();
