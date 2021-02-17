@@ -768,10 +768,6 @@ void Parser::ifThenDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, BasicBloc
     thenExitBB->successors.push_back   (fiBB);
     fiBB->predecessors.push_back   (thenExitBB);
     
-    Instruction* ifBranch = ifBB->body.back ();
-    int fiAddr = fiBB->body.front ()->getLine ();
-    ifBranch->setOperand2 (fiAddr);
-    
     //Instruction* thenExitBranch = thenExitBB->body.back ();
     //int fiAddr = fiBB->body.front ()->getLine ();
     //thenExitBranch->setOperand1 (fiAddr);
@@ -780,6 +776,8 @@ void Parser::ifThenDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, BasicBloc
      @@@@
      ADD PHI instructions!
      */
+    
+    bool hasPhi = false;
     
     for (auto const& var: *ifVarTable)
     {
@@ -790,9 +788,17 @@ void Parser::ifThenDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, BasicBloc
                 int line = ++sp;
                 fiBB->phiInstructions.push_back ( std::pair<Instruction*, int> (new Instruction (op_phi, (*thenVarTable) [var.first], (*ifVarTable) [var.first], line), var.first));
                 varTable [var.first] = line;
+                
+                hasPhi = true;
             }
         }
     }
+    
+    Instruction* ifBranch = ifBB->body.back ();
+    int fiAddr = fiBB->body.front ()->getLine ();
+    if (hasPhi) fiAddr = fiBB->phiInstructions.front ().first->getLine ();
+    ifBranch->setOperand2 (fiAddr);
+    
     
 }
 
@@ -810,13 +816,6 @@ void Parser::ifThenElseDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, Basic
     thenExitBB->successors.push_back   (fiBB);
     fiBB->predecessors.push_back   (thenExitBB);
     
-    Instruction* ifBranch = ifBB->body.back ();
-    int elseEntryAddr = elseEntryBB->body.front ()->getLine ();
-    ifBranch->setOperand2 (elseEntryAddr);
-    
-    Instruction* thenExitBranch = thenExitBB->body.back ();
-    int fiAddr = fiBB->body.front ()->getLine ();
-    thenExitBranch->setOperand1 (fiAddr);
     
     /*
      @@@@
@@ -835,6 +834,17 @@ void Parser::ifThenElseDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, Basic
             }
         }
     }
+    
+    
+    Instruction* ifBranch = ifBB->body.back ();
+    int elseEntryAddr = elseEntryBB->body.front ()->getLine ();
+    if (! elseEntryBB->phiInstructions.empty ()) elseEntryAddr = elseEntryBB->phiInstructions.front ().first->getLine ();
+    ifBranch->setOperand2 (elseEntryAddr);
+    
+    Instruction* thenExitBranch = thenExitBB->body.back ();
+    int fiAddr = fiBB->body.front ()->getLine ();
+    if (! fiBB->phiInstructions.empty ()) fiAddr = fiBB->phiInstructions.front ().first->getLine ();
+    thenExitBranch->setOperand1 (fiAddr);
     
 }
 
