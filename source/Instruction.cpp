@@ -16,6 +16,18 @@ void Instruction::setOperand2 (int operand2)
     this->operand2 = operand2;
 }
 
+void Instruction::setVar1 (int varID)
+{
+    this->var1 = varID;
+}
+
+void Instruction::setVar2 (int varID)
+{
+    this->var2 = varID;
+}
+
+
+
 std::string Instruction::toString ()
 {
     //std::cout << this->op << std::endl;

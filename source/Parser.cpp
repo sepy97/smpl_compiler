@@ -310,9 +310,15 @@ void Parser::assignment ()
     lex.next ();                    /** Consuming assign */
 	int o2 = expression ();
    
+   // std::cout << "VARIABLE 1: " << o1 << " VARIABLE 2: " << o2 << std::endl;
+    
     if (o2 > 0)
     {
         varTable [o1] = o2;
+    }
+    else if (o2 < 0)
+    {
+        varTable [o1] = varTable [-o2];
     }
     else err ("Assigning non-existing SSA line");
     
@@ -343,7 +349,19 @@ int Parser::funcCall ()
         tk = lex.getToken ();
         int o1 = expression ();
         int line = ++sp;
-        currentBB->pushInstruction (new Instruction (op_write, o1, -1, line) );
+        
+        int var1 = -1;
+        int operand1 = o1;
+        if (o1 < 0)
+        {
+            var1 = -o1;
+            operand1 = varTable [var1];
+        }
+        
+        Instruction* instr = new Instruction (op_write, operand1, -1, line);
+        instr->setVar1 (var1);
+        
+        currentBB->pushInstruction (instr);
         result = line;
         
         lex.next ();                /** Consuming bracket */
@@ -442,7 +460,7 @@ void Parser::ifStatement ()
     if (wasElse) ifThenElseDiamond (ifBB, thenEntryBB, elseEntryBB, thenExitBB, elseExitBB, fiBB, &ifVarTable, &thenVarTable, &elseVarTable);
     else ifThenDiamond (ifBB, thenEntryBB, thenExitBB, fiBB, &ifVarTable, &thenVarTable);
     
-    fiBB->body.pop_back ();    /** Removing nop instruction out of fiBB  */
+    //fiBB->body.pop_back ();    /** Removing nop instruction out of fiBB  */
     //sp--;
     
     currentBB = fiBB;
@@ -466,12 +484,14 @@ void Parser::whileStatement ()
     lex.next ();                    /** Consuming do */
 
     currentBB = doBB;
+    std::map <int, int> beforeLoopVarTable (varTable);          /** Making a local copy of varTable before all possible assignments in doBB */
 	
     statSequence ();
     
     BasicBlock* jmpBackBB = currentBB;
     int line = ++sp;
     jmpBackBB->pushInstruction (new Instruction (op_bra, -1 /* yet unknown */, -1, line));
+    std::map <int, int> afterLoopVarTable (varTable);          /** Making a local copy of varTable after all assignments in jmpBackBB */
 
 	tk = lex.getToken ();
 	if (tk != tk_od) err ("Syntax error in a while statement!");
@@ -480,10 +500,20 @@ void Parser::whileStatement ()
     //@@@@ add phi functions
     odBB->pushInstruction (new Instruction (++sp));
     
-    whileDoDiamond (beforeBB, whileBB, doBB, jmpBackBB, odBB);
+    /*
+    std::cout <<"BEFORE:" << std::endl;
+    for (auto& t : beforeLoopVarTable)
+        std::cout << t.first << " " << t.second << std::endl;
     
-    odBB->body.pop_back ();    /** Removing nop instruction out of odBB  */
-    sp--;
+    std::cout <<"AFTER:" << std::endl;
+    for (auto& t : afterLoopVarTable)
+        std::cout << t.first << " " << t.second << std::endl;
+    */
+    
+    whileDoDiamond (beforeBB, whileBB, doBB, jmpBackBB, odBB, &beforeLoopVarTable, &afterLoopVarTable);
+    
+    //odBB->body.pop_back ();    /** Removing nop instruction out of odBB  */
+    //sp--;
     
     currentBB = odBB;
 }
@@ -550,7 +580,26 @@ int Parser::expression ()
         else*/
         
         int line = ++sp;
-        currentBB->pushInstruction (new Instruction (opc, o1, o2, line) );
+        
+        int var1 = -1, var2 = -1;
+        int operand1 = o1;
+        if (o1 < 0)
+        {
+            var1 = -o1;
+            operand1 = varTable [var1];
+        }
+        int operand2 = o2;
+        if (o2 < 0)
+        {
+            var2 = -o2;
+            operand2 = varTable [var2];
+        }
+        
+        Instruction* instr = new Instruction (opc, operand1, operand2, line);
+        instr->setVar1 (var1);
+        instr->setVar2 (var2);
+        
+        currentBB->pushInstruction (instr );
         result = line;
         
         tk = lex.getToken ();
@@ -614,7 +663,26 @@ void Parser::relation ()
 	int o2 = expression ();
     
     int line = ++sp;
-    currentBB->pushInstruction (new Instruction (op_cmp, o1, o2, line) );
+    
+    int var1 = -1, var2 = -1;
+    int operand1 = o1;
+    if (o1 < 0)
+    {
+        var1 = -o1;
+        operand1 = varTable [var1];
+    }
+    int operand2 = o2;
+    if (o2 < 0)
+    {
+        var2 = -o2;
+        operand2 = varTable [var2];
+    }
+    
+    Instruction* instr = new Instruction (op_cmp, operand1, operand2, line);
+    instr->setVar1 (var1);
+    instr->setVar2 (var2);
+    
+    currentBB->pushInstruction (instr );
     line = ++sp;
     currentBB->pushInstruction (new Instruction (opc, line-1, -1/*unknown SSALine*/, line));
     
@@ -668,6 +736,7 @@ int Parser::term ()
     int result = 0;
     
 	int o1 = factor ();
+    //if (o1 <)
     result = o1;
     //std::cout << "term factor: " << o1 << std::endl;
     //resultOp rop;
@@ -677,7 +746,7 @@ int Parser::term ()
     while (tk == mul || tk == divis)
     {
         opCode opc = op_mul;
-        if (tk == sub) opc = op_div;
+        if (tk == divis) opc = op_div;
         lex.next ();                /** Consuming mul/div */
         int o2 = term ();
         
@@ -688,7 +757,25 @@ int Parser::term ()
         else*/
         
         int line = ++sp;
-        currentBB->pushInstruction (new Instruction (opc, o1, o2, line) );
+        int var1 = -1, var2 = -1;
+        int operand1 = o1;
+        if (o1 < 0)
+        {
+            var1 = -o1;
+            operand1 = varTable [var1];
+        }
+        int operand2 = o2;
+        if (o2 < 0)
+        {
+            var2 = -o2;
+            operand2 = varTable [var2];
+        }
+        
+        Instruction* instr = new Instruction (opc, operand1, operand2, line);
+        instr->setVar1 (var1);
+        instr->setVar2 (var2);
+        
+        currentBB->pushInstruction (instr);
         result = line;
         
         tk = lex.getToken ();
@@ -707,8 +794,9 @@ int Parser::factor ()
     {
         case identifier:
         {
-            int o1 = designator ();
-            result = varTable [o1];
+            int o1 = designator ();             /** negative variable identifier */
+            result = -1*o1;
+            //result = varTable [o1];
             break;
         }
         case num:
@@ -848,7 +936,7 @@ void Parser::ifThenElseDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, Basic
     
 }
 
-void Parser::whileDoDiamond (BasicBlock* beforeBB, BasicBlock* whileBB, BasicBlock* doBB, BasicBlock* jmpBackBB, BasicBlock* odBB)
+void Parser::whileDoDiamond (BasicBlock* beforeBB, BasicBlock* whileBB, BasicBlock* doBB, BasicBlock* jmpBackBB, BasicBlock* odBB, std::map <int, int>* beforeLoopVarTable, std::map <int, int>* afterLoopVarTable)
 {
     beforeBB->successors.push_back  (whileBB);
     whileBB->predecessors.push_back (beforeBB);
@@ -865,17 +953,102 @@ void Parser::whileDoDiamond (BasicBlock* beforeBB, BasicBlock* whileBB, BasicBlo
     whileBB->successors.push_back   (odBB);
     odBB->predecessors.push_back    (whileBB);
     
-    //int line = ++sp;
-    Instruction* jmpBackAddr = jmpBackBB->body.back ();
-    int whileLine = whileBB->body.front ()->getLine ();
-    jmpBackAddr->setOperand1 (whileLine);// ->pushInstruction (new Instruction (op_bra, whileLine, -1, line));
-    
-    Instruction* whileBranch = whileBB->body.back ();
-    int odLine = odBB->body.front ()->getLine ();
-    whileBranch->setOperand2 (odLine);
     
     /*
      @@@@
      ADD PHI instructions!
      */
+    
+    for (auto const& var: *beforeLoopVarTable)
+    {
+        if ( (*beforeLoopVarTable) [var.first] != (*afterLoopVarTable) [var.first])
+        {
+            if ((*beforeLoopVarTable) [var.first] != 0 && (*afterLoopVarTable) [var.first] != 0) /** Variable is initialized on both paths */
+            {
+                int line = ++sp;
+                whileBB->phiInstructions.push_back ( std::pair<Instruction*, int> (new Instruction (op_phi, (*beforeLoopVarTable) [var.first], (*afterLoopVarTable) [var.first], line), var.first));
+                varTable [var.first] = line;
+                
+                //std::cout << "PROPAGATING PHI!" << std::endl;
+                
+                //std::cout << beforeBB->toString () << std::endl;
+                //std::cout << whileBB->toString () << std::endl;
+                
+                /*for (auto& t : varTable)
+                    std::cout << t.first << " " << t.second << std::endl;
+                */
+                
+                replaceWithPhi (whileBB, var.first, line);
+                
+                propagatePhi (/*whileBB*/doBB, jmpBackBB, var.first, line);
+                
+            }
+        }
+    }
+    
+    
+    Instruction* jmpBackAddr = jmpBackBB->body.back ();
+    int whileLine = whileBB->body.front ()->getLine ();
+    if (! whileBB->phiInstructions.empty ()) whileLine = whileBB->phiInstructions.front ().first->getLine ();
+    jmpBackAddr->setOperand1 (whileLine);// ->pushInstruction (new Instruction (op_bra, whileLine, -1, line));
+    
+    Instruction* whileBranch = whileBB->body.back ();
+    int odLine = odBB->body.front ()->getLine ();
+    if (! odBB->phiInstructions.empty ()) odLine = odBB->phiInstructions.front ().first->getLine ();
+    whileBranch->setOperand2 (odLine);
+}
+
+void Parser::propagatePhi (BasicBlock* startBB, BasicBlock* endBB, int varID, int SSALine)
+{
+    //if startBB
+    //std::cout << startBB->toString () << std::endl;
+    
+    //std::cout << endBB->toString () << std::endl;
+    //std::cout << "@@@@@@@\n" << std::endl;
+    //BasicBlock* currentBB = startBB;
+    //while (true)
+    {
+        
+        replaceWithPhi (startBB, varID, SSALine);
+        
+        if (startBB == endBB) return;
+        
+        if (startBB->successors.empty ()) return;
+        for (auto& bb: startBB->successors)
+        {
+            
+            propagatePhi (bb, endBB, varID, SSALine);
+        }
+        
+    }
+}
+
+void Parser::replaceWithPhi (BasicBlock* bb, int varID, int SSALine)
+{
+    for (auto& p: bb->phiInstructions)
+    {
+        if (p.first->getVar1 () == varID)
+        {
+            p.first->setOperand1 (SSALine);
+        }
+        
+        if (p.first->getVar2 () == varID)
+        {
+            p.first->setOperand2 (SSALine);
+        }
+    }
+    
+    for (auto& i: bb->body)
+    {
+        if (i->getVar1 () == varID)
+        {
+            i->setOperand1 (SSALine);
+        }
+    
+        if (i->getVar2 () == varID)
+        {
+            i->setOperand2 (SSALine);
+        }
+    }
+    
 }

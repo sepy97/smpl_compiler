@@ -3,7 +3,20 @@
 
 void BasicBlock::pushInstruction (Instruction* toInsert)
 {
-    this->body.push_back (toInsert);
+    if (!this->body.empty ())
+    {
+        Instruction* lastInstr = this->body.back ();
+        if (lastInstr->getOp () == nop)
+        {
+            lastInstr->setOp (toInsert->getOp ());
+            lastInstr->setOperand1 (toInsert->getOperand1 ());
+            lastInstr->setOperand2 (toInsert->getOperand2 ());
+            lastInstr->setVar1 (toInsert->getVar1 ());
+            lastInstr->setVar2 (toInsert->getVar2 ());
+        }
+        else this->body.push_back (toInsert);
+    }
+    else this->body.push_back (toInsert);
 }
 
 bool BasicBlock::pushAfter (Instruction* toInsert, Instruction* after)

@@ -54,7 +54,11 @@ private:
     
     void ifThenDiamond     (BasicBlock* ifBB,     BasicBlock* thenEntryBB, BasicBlock* thenExitBB,  BasicBlock* fiBB, std::map <int, int>* ifVarTable, std::map <int, int>* thenVarTable );
     void ifThenElseDiamond (BasicBlock* ifBB,     BasicBlock* thenEntryBB, BasicBlock* elseEntryBB, BasicBlock* thenExitBB,  BasicBlock* elseExitBB, BasicBlock* fiBB, std::map <int, int>* ifVarTable, std::map <int, int>* thenVarTable, std::map <int, int>* elseVarTable);
-    void whileDoDiamond    (BasicBlock* beforeBB, BasicBlock* whileBB,     BasicBlock* doBB,        BasicBlock* jmpBackBB,   BasicBlock* odBB);
+    void whileDoDiamond    (BasicBlock* beforeBB, BasicBlock* whileBB,     BasicBlock* doBB,        BasicBlock* jmpBackBB,   BasicBlock* odBB, std::map <int, int>* beforeLoopVarTable, std::map <int, int>* afterLoopVarTable);
+    
+    void propagatePhi (BasicBlock* startBB, BasicBlock* endBB, int varID, int SSALine);
+    
+    void replaceWithPhi (BasicBlock* bb, int varID, int SSALine);
     
 /**
 *  varTable stores variable id (first) and SSA line number (second)
