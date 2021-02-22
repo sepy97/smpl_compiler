@@ -26,8 +26,6 @@ void Instruction::setVar2 (int varID)
     this->var2 = varID;
 }
 
-
-
 std::string Instruction::toString ()
 {
     //std::cout << this->op << std::endl;
@@ -222,3 +220,5 @@ std::string Instruction::toString ()
     //std::cout << res << std::endl;
     return res;
 }
+
+

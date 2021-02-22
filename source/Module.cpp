@@ -18,3 +18,12 @@ std::string Module::toString ()
     
     return res;
 }
+
+void Module::dotGraph (std::string* basicBlocks, std::string* edges)
+{
+    for (Function* f: this->body)
+    {
+        *basicBlocks += "digraph ";
+        f->dotGraph (basicBlocks, edges);
+    }
+}

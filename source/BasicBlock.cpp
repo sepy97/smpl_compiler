@@ -59,3 +59,36 @@ std::string BasicBlock::toString ()
     //std::cout << res << std::endl;
     return res;
 }
+
+void BasicBlock::dotGraph (std::string* basicBlocks, std::string* edges)
+{
+    if (this->body.empty () && this->phiInstructions.empty () )
+    {
+        //res += "<empty>\n";
+        *basicBlocks += " \\< empty \\> ";
+    }
+    else
+    {
+        
+        for (std::pair<Instruction* , int> i: this->phiInstructions)
+        {
+            *basicBlocks += i.first->toString ();
+            *basicBlocks += " | ";
+            //dotGraph (basicBlocks, edges);
+               // res += i.first->toString ();
+               // res += "\n";
+        }
+        
+        for (Instruction* i: this->body)
+        {
+            *basicBlocks += i->toString ();
+            *basicBlocks += " | ";
+            //if (i != this->body.end ()) *basicBlocks += " | ";
+            //i->dotGraph (basicBlocks, edges);
+            //res += i->toString ();
+            //res += "\n";
+        }
+        (*basicBlocks).pop_back ();
+        (*basicBlocks).pop_back ();
+    }
+}

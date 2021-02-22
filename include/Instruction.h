@@ -1,6 +1,8 @@
 #include <vector>
 #include <string>
 //#include "Operand.h"
+#include <iostream>
+#include <fstream>
 
 #define NUMOFOPS 50     /** Fixed number of possible opcodes */
 
@@ -68,6 +70,13 @@ public:
         return (this->SSALine == i2.SSALine);
     }
     
+    bool compare (const Instruction* i1)
+    {
+        //std::cout << "COMPARING: \n" << i1->op << " " << this->op << i1->operand1 << " " << this->operand1 << i1->operand2 << " " << this->operand2 << std::endl;
+        
+        return (i1->op == this->op && i1->operand1 == this->operand1 && i1->operand2 == this->operand2);
+    }
+    
     int getLine ()
     {
         return SSALine;
@@ -100,6 +109,7 @@ public:
     
     std::string toString ();
     
+    
     void setPrevDom (Instruction* instr)
     {
         this->prevDomInstr = instr;
@@ -117,7 +127,7 @@ private:
     
     int var1 = -1, var2 = -1;
     
-    Instruction* prevDomInstr;
+    Instruction* prevDomInstr = nullptr;
     
     
 };

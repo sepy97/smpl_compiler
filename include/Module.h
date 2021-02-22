@@ -14,6 +14,8 @@ public:
     
     std::string toString ();
     
+    void dotGraph (std::string* basicBlocks, std::string* edges);
+    
 //private:
     std::vector<Function* > body;
     

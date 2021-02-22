@@ -12,6 +12,7 @@ int main (int argc, char* argv[])
         
         Parser tmp (fileToCompile);
         tmp.parse ();
+        tmp.dotGraph ();
     }
 	//Lexer tmp ("inp.txt");
     //Parser tmp ("inp.txt");

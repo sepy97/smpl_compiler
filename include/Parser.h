@@ -1,14 +1,17 @@
 #include "Lexer.h"
 #include "Module.h"
+#include <array>
 
 class Parser
 {
 public:
 	Parser (std::string s);
 	void parse ();
-
+    
+    void dotGraph ();
 private:
     
+    int bbCounter;// = 0;
 /**
 *	"Lexer" will get tokens from a source file (more info in Lexer.h)
 */
@@ -24,7 +27,7 @@ private:
 	void formalParam ();
 	void funcDecl ();
 	void varDecl ();
-	void typeDecl ();
+	bool typeDecl ();
 
 	void statement ();
 
@@ -64,4 +67,13 @@ private:
 *  varTable stores variable id (first) and SSA line number (second)
 */
     std::map <int, int> varTable;
+    
+/**
+ * Data structure for Common Subexpression Elimination
+ */
+    std::array <Instruction*, NUMOFOPS> CSE;// [NUMOFOPS];
+    bool pushCSE (Instruction* instr);
+    Instruction* popCSE (opCode opc);
+    int findCommonSubexpression (Instruction* instr);
+    
 };

@@ -1,10 +1,10 @@
 #include "Parser.h"
 
-Parser::Parser (std::string s) : lex (s)
+Parser::Parser (std::string s) : lex (s), CSE ()
 {
 	//lex = Lexer (s);
     sp = 0;
-    
+    bbCounter = 0;
     //std::cout << "BEFORE Module ctor" << std::endl;
     
     this->m = new Module ();
@@ -17,11 +17,11 @@ void Parser::parse ()
     
     lex.next ();
     token tk = lex.getToken ();
-    if (tk != tk_main) err ("parse");
+    if (tk != tk_main) err ("Main function not found! ");
     else
     {
        // Instruction instr = new Instruction (++sp);
-        BasicBlock* bb = new BasicBlock ();///*instr*/new Instruction (++sp));
+        BasicBlock* bb = new BasicBlock (++bbCounter);///*instr*/new Instruction (++sp));
         Function* f = new Function (std::string ("main"), bb);
         m->insertFunc (f);
         
@@ -67,17 +67,17 @@ void Parser::computation ()
         tk = lex.getToken ();
     }
 	tk = lex.getToken ();
-	if (tk != openCurlBracket) err ("computation_opCurl");
+	if (tk != openCurlBracket) err ("Syntax error: missing opening curling bracket!");
     lex.next ();                    /** Consuming bracket */
     
 	statSequence ();
 
 	tk = lex.getToken ();
-	if (tk != closeCurlBracket) err ("computation_clCurl");
+	if (tk != closeCurlBracket) err ("Syntax error: missing closing curling bracket!");
     lex.next ();                    /** Consuming bracket */
     
 	tk = lex.getToken ();
-	if (tk != dot) err ("computation_dot");
+	if (tk != dot) err ("Syntax error: missing a dot at the end!");
     lex.next ();                    /** Consuming dot */
     
     tk = lex.getToken ();
@@ -86,7 +86,7 @@ void Parser::computation ()
 
 void Parser::varDecl ()
 {
-    typeDecl ();
+    bool isArray = typeDecl ();
     
     token tk = lex.getToken ();
     while (tk == identifier)
@@ -106,21 +106,22 @@ void Parser::varDecl ()
         }
         else
         {
-            err ("varDecl");
+            err ("Syntax error in variable declaration!");
             break;
         }
     }
     
-    if (tk != semicolon) err ("Syntax error in variable declaration: missing semicolon");
+    if (tk != semicolon) err ("Syntax error in variable declaration: missing semicolon!");
     lex.next ();                    /** Consuming semicolon */
 }
 
-void Parser::typeDecl ()
+bool Parser::typeDecl ()
 {
     token tk = lex.getToken ();
     if (tk == tk_var)
     {
         lex.next ();                /** Consuming var */
+        return false;
     }
     else if (tk == tk_array)
     {
@@ -130,17 +131,19 @@ void Parser::typeDecl ()
         {
             lex.next ();            /** Consuming square bracket */
             tk = lex.getToken ();
-            if (tk != num) err ("typeDecl");
+            if (tk != num) err ("Syntax error in array declaration!");
             
             int num = lex.getVal ();
             lex.next ();            /** Consuming array dimension */
             
             tk = lex.getToken ();
-            if (tk != closeSqBracket) err ("typeDecl");
+            if (tk != closeSqBracket) err ("Syntax error in array declaration: missing closing square bracket!");
             lex.next ();            /** Consuming square bracket */
             tk = lex.getToken ();
         }
+        return true;
     }
+    return false;
 }
 
 void Parser::funcDecl ()
@@ -163,13 +166,13 @@ void Parser::funcDecl ()
     formalParam ();
     
     tk = lex.getToken ();
-    if (tk != semicolon) err ("funcDecl");
+    if (tk != semicolon) err ("Syntax error in function declaration: missing semicolon!");
     lex.next ();                    /** Consuming semicolon */
     
     funcBody ();
     
     tk = lex.getToken ();
-    if (tk != semicolon) err ("funcDecl");
+    if (tk != semicolon) err ("Syntax error in function declaration: missing semicolon!");
     lex.next ();                    /** Consuming semicolon */
 }
 
@@ -198,13 +201,13 @@ void Parser::formalParam ()
         }
         else
         {
-            err ("formalParam");
+            err ("Syntax error: incorrect parameter description!");
             break;
         }
     }
     
     tk = lex.getToken ();
-    if (tk != closeBracket) err ("formalParam");
+    if (tk != closeBracket) err ("Syntax error: missing closing bracket!");
     lex.next ();                   /** Consuming bracket */
 }
 
@@ -219,7 +222,7 @@ void Parser::funcBody ()
     }
     
     tk = lex.getToken ();
-    if (tk != openCurlBracket) err ("funcBody");
+    if (tk != openCurlBracket) err ("Syntax error: missing opening curling bracket!");
     lex.next ();                    /** Consuming curl bracket */
     tk = lex.getToken ();
     if (tk == tk_let || tk == tk_call || tk == tk_if || tk == tk_while || tk == tk_return)
@@ -228,7 +231,7 @@ void Parser::funcBody ()
         
     }
     tk = lex.getToken ();
-    if (tk != closeCurlBracket) err ("funcBody");
+    if (tk != closeCurlBracket) err ("Syntax error: missing closing curling bracket!");
     lex.next ();                    /** Consuming curl bracket */
 }
 
@@ -306,7 +309,7 @@ void Parser::assignment ()
 	int o1 = designator ();
 
 	token tk = lex.getToken ();
-	if (tk != assign) err ("assignment");
+	if (tk != assign) err ("Syntax error in an assignment: missing equal sign!");
     lex.next ();                    /** Consuming assign */
 	int o2 = expression ();
    
@@ -337,8 +340,18 @@ int Parser::funcCall ()
         lex.next ();                /** Consuming bracket */
         
         int line = ++sp;
-        currentBB->pushInstruction (new Instruction (op_read, -1, -1, line) );
-        result = line;
+        Instruction* instr = new Instruction (op_read, -1, -1, line);
+        //@@@@ CSE
+        int CSELine = findCommonSubexpression (instr);
+        if (CSELine == 0)
+        {
+            currentBB->pushInstruction (instr);
+            pushCSE (instr);
+            result = line;
+        } else result = CSELine;
+        
+        //currentBB->pushInstruction (new Instruction (op_read, -1, -1, line) );
+        //result = line;
         
     }
     else if (tk == tk_write)
@@ -361,8 +374,17 @@ int Parser::funcCall ()
         Instruction* instr = new Instruction (op_write, operand1, -1, line);
         instr->setVar1 (var1);
         
-        currentBB->pushInstruction (instr);
-        result = line;
+        //@@@@ CSE
+        int CSELine = findCommonSubexpression (instr);
+        if (CSELine == 0)
+        {
+            currentBB->pushInstruction (instr);
+            pushCSE (instr);
+            result = line;
+        } else result = CSELine;
+        
+        //currentBB->pushInstruction (instr);
+        //result = line;
         
         lex.next ();                /** Consuming bracket */
         
@@ -386,7 +408,7 @@ int Parser::funcCall ()
                 }
             }
             tk = lex.getToken ();
-            if (tk != closeBracket) err ("funcCall");
+            if (tk != closeBracket) err ("Syntax error: missing closing curling bracket!");
             lex.next ();                /** Consuming bracket */
         }
     }
@@ -396,9 +418,9 @@ int Parser::funcCall ()
 
 void Parser::ifStatement ()
 {
-    BasicBlock* thenEntryBB = new BasicBlock ();
-    BasicBlock* elseEntryBB = new BasicBlock ();
-    BasicBlock* fiBB        = new BasicBlock ();
+    BasicBlock* thenEntryBB = new BasicBlock (++bbCounter);
+    BasicBlock* elseEntryBB = new BasicBlock (++bbCounter);
+    BasicBlock* fiBB        = new BasicBlock (++bbCounter);
     
     //if ()
     bool hasNestedBranch = false;
@@ -418,7 +440,12 @@ void Parser::ifStatement ()
     std::map <int, int> ifVarTable (varTable);          /** Making a local copy of varTable before all possible assignments in thenBB */
     
     currentBB = thenEntryBB;
-	statSequence ();
+    
+    //Instruction* backupCSE [NUMOFOPS];
+    std::array <Instruction*, NUMOFOPS> backupCSE = CSE;
+    //std::copy (std::begin (CSE), std::end (CSE), backupCSE);
+	
+    statSequence ();
     
     BasicBlock* thenExitBB = currentBB;
     BasicBlock* elseExitBB;
@@ -431,6 +458,8 @@ void Parser::ifStatement ()
     
     varTable = std::map <int, int> (ifVarTable);
     
+    CSE = backupCSE;
+    
 	tk = lex.getToken ();
     bool wasElse = false;
 	if (tk == tk_else)
@@ -441,13 +470,17 @@ void Parser::ifStatement ()
         lex.next ();                /** Consuming else */
         
         currentBB = elseEntryBB;
-		statSequence ();
+		
+        statSequence ();
+        
         elseExitBB = currentBB;
         
         if (elseExitBB != elseEntryBB) hasNestedBranch = true;
     }
     
     std::map <int, int> elseVarTable (varTable);          /** Making a local copy of varTable after elseBB */
+    
+    CSE = backupCSE;
     
 	tk = lex.getToken ();
 	if (tk != tk_fi) err ("Syntax error in an if statement!");
@@ -468,9 +501,9 @@ void Parser::ifStatement ()
 
 void Parser::whileStatement ()
 {
-    BasicBlock* whileBB = new BasicBlock ();
-    BasicBlock* doBB    = new BasicBlock ();
-    BasicBlock* odBB    = new BasicBlock ();
+    BasicBlock* whileBB = new BasicBlock (++bbCounter);
+    BasicBlock* doBB    = new BasicBlock (++bbCounter);
+    BasicBlock* odBB    = new BasicBlock (++bbCounter);
     
     BasicBlock* beforeBB = currentBB;
     
@@ -491,6 +524,7 @@ void Parser::whileStatement ()
     BasicBlock* jmpBackBB = currentBB;
     int line = ++sp;
     jmpBackBB->pushInstruction (new Instruction (op_bra, -1 /* yet unknown */, -1, line));
+    //branch doesn't require CSE
     std::map <int, int> afterLoopVarTable (varTable);          /** Making a local copy of varTable after all assignments in jmpBackBB */
 
 	tk = lex.getToken ();
@@ -547,7 +581,7 @@ int Parser::designator ()
         expression ();              //@@@@  only static arrays?..
         
         tk = lex.getToken ();
-        if (tk != closeSqBracket) err ("designator");
+        if (tk != closeSqBracket) err ("Syntax error: missing closing square bracket!");
         lex.next ();                /** Consuming square bracket */
         tk = lex.getToken ();
     }
@@ -582,10 +616,10 @@ int Parser::expression ()
         int line = ++sp;
         
         int var1 = -1, var2 = -1;
-        int operand1 = o1;
-        if (o1 < 0)
+        int operand1 = result;
+        if (result < 0)
         {
-            var1 = -o1;
+            var1 = -result;
             operand1 = varTable [var1];
         }
         int operand2 = o2;
@@ -599,8 +633,17 @@ int Parser::expression ()
         instr->setVar1 (var1);
         instr->setVar2 (var2);
         
-        currentBB->pushInstruction (instr );
-        result = line;
+        //@@@@ CSE
+        int CSELine = findCommonSubexpression (instr);
+        if (CSELine == 0)
+        {
+            currentBB->pushInstruction (instr);
+            result = line;
+            pushCSE (instr);
+        } else result = CSELine;
+        
+        //currentBB->pushInstruction (instr );
+        //result = line;
         
         tk = lex.getToken ();
     }
@@ -682,10 +725,20 @@ void Parser::relation ()
     instr->setVar1 (var1);
     instr->setVar2 (var2);
     
-    currentBB->pushInstruction (instr );
-    line = ++sp;
-    currentBB->pushInstruction (new Instruction (opc, line-1, -1/*unknown SSALine*/, line));
+    //@@@@ CSE
+    int CSELine = findCommonSubexpression (instr);
+    int cmpLine = 0;
+    if (CSELine == 0)
+    {
+        currentBB->pushInstruction (instr);
+        pushCSE (instr);
+        cmpLine = line;
+    } else cmpLine = CSELine;
     
+    //currentBB->pushInstruction (instr );
+    line = ++sp;
+    currentBB->pushInstruction (new Instruction (opc, cmpLine, -1/*unknown SSALine*/, line));
+    //No CSE for branching obviously
 }
 
 void Parser::relOp ()
@@ -725,7 +778,7 @@ void Parser::relOp ()
         }
         default:
         {
-            err ("relOp");
+            err ("Syntax error: incorrect relation!");
             break;
         }
     }
@@ -758,10 +811,10 @@ int Parser::term ()
         
         int line = ++sp;
         int var1 = -1, var2 = -1;
-        int operand1 = o1;
-        if (o1 < 0)
+        int operand1 = result;
+        if (result < 0)
         {
-            var1 = -o1;
+            var1 = -result;
             operand1 = varTable [var1];
         }
         int operand2 = o2;
@@ -775,8 +828,14 @@ int Parser::term ()
         instr->setVar1 (var1);
         instr->setVar2 (var2);
         
-        currentBB->pushInstruction (instr);
-        result = line;
+        //@@@@ CSE
+        int CSELine = findCommonSubexpression (instr);
+        if (CSELine == 0)
+        {
+            currentBB->pushInstruction (instr);
+            pushCSE (instr);
+            result = line;
+        } else result = CSELine;
         
         tk = lex.getToken ();
     }
@@ -803,8 +862,19 @@ int Parser::factor ()
         {
             //o1 = number ();
             int line = ++sp;
-            currentBB->pushInstruction (new Instruction (op_const, lex.getVal (), -1, line) );
-            result = line;
+            Instruction* instr = new Instruction (op_const, lex.getVal (), -1, line);
+            
+            //@@@@ CSE
+            int CSELine = findCommonSubexpression (instr);
+            if (CSELine == 0)
+            {
+                currentFunc->pushConstInstruction (instr);
+                pushCSE (instr);
+                result = line;
+            } else result = CSELine;
+            //currentFunc->pushConstInstruction (new Instruction (op_const, lex.getVal (), -1, line) );
+            //currentBB->pushInstruction (new Instruction (op_const, lex.getVal (), -1, line) );  //@@@@ GENERATE a BASIC BLOCK for CONSTANTS
+            //result = line;
             lex.next ();                /** Consuming a number */
             break;
         }
@@ -815,7 +885,7 @@ int Parser::factor ()
             int o1 = expression ();
             
             tk = lex.getToken ();
-            if (tk != closeBracket) err ("factor");
+            if (tk != closeBracket) err ("Syntax error: missing closing bracket!");
             lex.next ();                /** Consuming bracket */
             
             result = o1;
@@ -947,8 +1017,8 @@ void Parser::whileDoDiamond (BasicBlock* beforeBB, BasicBlock* whileBB, BasicBlo
     jmpBackBB->successors.push_back (whileBB);
     whileBB->predecessors.push_back (jmpBackBB);
     
-    jmpBackBB->successors.push_back (odBB);
-    odBB->predecessors.push_back    (jmpBackBB);
+   // jmpBackBB->successors.push_back (odBB);
+   // odBB->predecessors.push_back    (jmpBackBB);
     
     whileBB->successors.push_back   (odBB);
     odBB->predecessors.push_back    (whileBB);
@@ -1051,4 +1121,52 @@ void Parser::replaceWithPhi (BasicBlock* bb, int varID, int SSALine)
         }
     }
     
+}
+
+bool Parser::pushCSE (Instruction* instr)
+{
+    bool result = false;
+    Instruction* before = CSE [instr->getOp ()];
+    if (before == nullptr) result = true;
+    instr->setPrevDom (before);
+    CSE [instr->getOp ()] = instr;
+    return result;
+}
+
+Instruction* Parser::popCSE (opCode opc)
+{
+    Instruction* result = CSE [opc];
+    Instruction* before = result->getPrevDom ();
+    CSE [opc] = before;
+    return result;
+}
+
+int Parser::findCommonSubexpression (Instruction* instr)
+{
+    int result = 0;
+    opCode opc = instr->getOp ();
+    Instruction* currentInstr = CSE [opc];
+    while (currentInstr != nullptr)
+    {
+        if (currentInstr->compare (instr))
+        {
+            result = currentInstr->getLine ();
+            return result;
+        }
+        currentInstr = currentInstr->getPrevDom ();
+    }
+    return result;
+}
+
+void Parser::dotGraph ()
+{
+    std::ofstream file;
+    file.open ("CFG.dot");
+    std::string basicBlocks = "", edges = "";
+    
+    m->dotGraph (&basicBlocks, &edges);
+    
+    file << basicBlocks;
+    file << "\n\n";
+    file << edges;
 }
