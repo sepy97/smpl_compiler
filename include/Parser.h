@@ -2,6 +2,7 @@
 #include "Module.h"
 #include <array>
 
+#define SIZEOFINT 4
 class Parser
 {
 public:
@@ -27,7 +28,7 @@ private:
 	void formalParam ();
 	void funcDecl ();
 	void varDecl ();
-	bool typeDecl ();
+	void typeDecl ();
 
 	void statement ();
 
@@ -55,6 +56,8 @@ private:
     
     BasicBlock* currentJoinBB; //@@@@
     
+    int emitInstruction (Instruction* instr);
+    
     void ifThenDiamond     (BasicBlock* ifBB,     BasicBlock* thenEntryBB, BasicBlock* thenExitBB,  BasicBlock* fiBB, std::map <int, int>* ifVarTable, std::map <int, int>* thenVarTable );
     void ifThenElseDiamond (BasicBlock* ifBB,     BasicBlock* thenEntryBB, BasicBlock* elseEntryBB, BasicBlock* thenExitBB,  BasicBlock* elseExitBB, BasicBlock* fiBB, std::map <int, int>* ifVarTable, std::map <int, int>* thenVarTable, std::map <int, int>* elseVarTable);
     void whileDoDiamond    (BasicBlock* beforeBB, BasicBlock* whileBB,     BasicBlock* doBB,        BasicBlock* jmpBackBB,   BasicBlock* odBB, std::map <int, int>* beforeLoopVarTable, std::map <int, int>* afterLoopVarTable);
@@ -67,6 +70,21 @@ private:
 *  varTable stores variable id (first) and SSA line number (second)
 */
     std::map <int, int> varTable;
+   
+/**
+*  arrTable stores array id (index of an element), memory offset (first in a pair), and vector of dimensions (second in a pair)
+*/
+    int offset = 0;
+    std::map <int, std::pair <int, std::vector <int> > > arrTable;
+    std::vector <int> dims;
+    bool isArray = false;
+    
+    int arrID1 = -1;
+    int arrID2 = -1;
+    std::vector<int> arrIndexes;
+    //int arrIndex = -1;
+    int emitLoad (int toLoad);
+    int emitStore (int what, int where);
     
 /**
  * Data structure for Common Subexpression Elimination

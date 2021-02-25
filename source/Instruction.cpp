@@ -26,6 +26,16 @@ void Instruction::setVar2 (int varID)
     this->var2 = varID;
 }
 
+void Instruction::setArr1 (int ID)
+{
+    this->arr1 = ID;
+}
+
+void Instruction::setArr2 (int ID)
+{
+    this->arr2 = ID;
+}
+
 std::string Instruction::toString ()
 {
     //std::cout << this->op << std::endl;
@@ -48,11 +58,20 @@ std::string Instruction::toString ()
         }
         case op_add:
         {
-            res += "add (";
-            res += std::to_string (operand1);
-            res += ") (";
-            res += std::to_string (operand2);
-            res += ")";
+            if (operand1 == -28)
+            {
+                res += "add R28 (";
+                res += std::to_string (operand2);
+                res += ")";
+            }
+            else
+            {
+                res += "add (";
+                res += std::to_string (operand1);
+                res += ") (";
+                res += std::to_string (operand2);
+                res += ")";
+            }
             break;
         }
         case op_sub:
@@ -93,24 +112,27 @@ std::string Instruction::toString ()
         }
         case op_adda:   //@@@@
         {
-            res += "adda ";
+            res += "adda (";
             res += std::to_string (operand1);
-            res += " ";
+            res += ") (";
             res += std::to_string (operand2);
+            res += ")";
             break;
         }
         case op_load:   //@@@@
         {
-            res += "load ";
+            res += "load (";
             res += std::to_string (operand1);
+            res += ")";
             break;
         }
         case op_store:  //@@@@
         {
-            res += "store ";
+            res += "store (";
             res += std::to_string (operand1);
-            res += " ";
+            res += ") (";
             res += std::to_string (operand2);
+            res += ")";
             break;
         }
         case op_phi:
@@ -213,6 +235,7 @@ std::string Instruction::toString ()
         }
         default:
         {
+            std::cout << "Incorrect instruction opcode!" << std::endl;
             break;
         }
             

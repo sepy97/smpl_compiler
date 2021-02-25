@@ -86,42 +86,92 @@ void Parser::computation ()
 
 void Parser::varDecl ()
 {
-    bool isArray = typeDecl ();
+    /*bool isArray = */
+    typeDecl ();
     
     token tk = lex.getToken ();
-    while (tk == identifier)
+    if (isArray)
     {
-        varTable [lex.getId ()] = 0;
-        lex.next ();                            /** Consuming identifier */
-        
-        tk = lex.getToken ();
-        if (tk == comma)
+        while (tk == identifier)
         {
-            lex.next ();            /** Consuming comma */
+            /*
+            std::cout << lex.getId () << std::endl;
+            std::cout << offset << std::endl;
+            for (int i = 0; i < dims.size (); i++)
+            {
+                std::cout << dims[i] << " ";
+            }
+            std::cout << "\n";
+            */
+            
+            arrTable [lex.getId ()] = std::make_pair (offset, dims);
+            int shift = 1;
+            for (int i = 0; i < dims.size (); i++)//auto &i: dims)
+            {
+                shift *= dims[i];//+1;
+                //offset += dims[i]*SIZEOFINT;
+            }
+            offset += SIZEOFINT*shift;
+            //arrTable.push_back (lex.getId (), dims);
+            
+            lex.next ();
+            
             tk = lex.getToken ();
+            if (tk == comma)
+            {
+                lex.next ();            /** Consuming comma */
+                tk = lex.getToken ();
+            }
+            else if (tk == semicolon)
+            {
+                break;
+            }
+            else
+            {
+                err ("Syntax error in array declaration!");
+                break;
+            }
         }
-        else if (tk == semicolon)
+    }
+    else
+    {
+        while (tk == identifier)
         {
-            break;
-        }
-        else
-        {
-            err ("Syntax error in variable declaration!");
-            break;
+            varTable [lex.getId ()] = 0;
+            lex.next ();                            /** Consuming identifier */
+            
+            tk = lex.getToken ();
+            if (tk == comma)
+            {
+                lex.next ();            /** Consuming comma */
+                tk = lex.getToken ();
+            }
+            else if (tk == semicolon)
+            {
+                break;
+            }
+            else
+            {
+                err ("Syntax error in variable declaration!");
+                break;
+            }
         }
     }
     
+    dims.clear ();
+    isArray = false;
     if (tk != semicolon) err ("Syntax error in variable declaration: missing semicolon!");
     lex.next ();                    /** Consuming semicolon */
 }
 
-bool Parser::typeDecl ()
+void Parser::typeDecl ()
 {
     token tk = lex.getToken ();
     if (tk == tk_var)
     {
         lex.next ();                /** Consuming var */
-        return false;
+        isArray = false;
+        //return false;
     }
     else if (tk == tk_array)
     {
@@ -129,21 +179,24 @@ bool Parser::typeDecl ()
         tk = lex.getToken ();
         while (tk == openSqBracket)
         {
+            //int dim = 0;
             lex.next ();            /** Consuming square bracket */
             tk = lex.getToken ();
             if (tk != num) err ("Syntax error in array declaration!");
             
             int num = lex.getVal ();
             lex.next ();            /** Consuming array dimension */
+            dims.push_back (num);
             
             tk = lex.getToken ();
             if (tk != closeSqBracket) err ("Syntax error in array declaration: missing closing square bracket!");
             lex.next ();            /** Consuming square bracket */
             tk = lex.getToken ();
         }
-        return true;
+        isArray = true;
+        //return true;
     }
-    return false;
+    //return false;
 }
 
 void Parser::funcDecl ()
@@ -304,27 +357,144 @@ void Parser::statement ()
 
 void Parser::assignment ()
 {
+    int line = 0;
+    bool needStore = false;
     lex.next ();                    /** Consuming let */
     
 	int o1 = designator ();
+    std::vector <int> storeIndexes;
+    
+    if (isArray)
+    {
+        needStore = true;
+        storeIndexes = arrIndexes;
+    }
+    arrIndexes.clear ();
+        
 
 	token tk = lex.getToken ();
 	if (tk != assign) err ("Syntax error in an assignment: missing equal sign!");
     lex.next ();                    /** Consuming assign */
+    
+    isArray = false;
+    
 	int o2 = expression ();
+    //std::vector <int> loadIndexes;
+    /*if (isArray)
+    {
+        loadIndexes = arrIndexes;
+    }*/
+    
+    //std::cout << isArray << " " << o1 << " " << o2 << std::endl;
+    
+    /*
+    if (isArray)
+    {
+        
+        std::cout << ids.size () << " " << arrTable[result].second.size () << std::endl;
+        for (int i = 0; i < ids.size (); i++)
+        {
+            std::cout << ids[i] << " ";
+        }
+        std::cout << "\n";
+        
+        if (ids.size () != arrTable [result].second.size ()) err ("Incorrect number of indices for the array!");
+        
+        int o1 = 0, o2 = 0;
+        int line = ++sp;
+        Instruction* instr = new Instruction (op_const, 4, -1, line);
+        o1 = emitInstruction (instr);
+        
+        int idxLine = ids[0];
+        int idsSize = ids.size ();
+        for (int i = 1; i < idsSize; i++)
+        {
+            int line1 = ++sp;
+            Instruction* constInstr = new Instruction (op_const, arrTable [result].second [i], -1, line1);
+            int constLine = emitInstruction (constInstr);
+            
+            int mulLine = ++sp;
+            //int mulres = 0;
+            Instruction* mulInstr = new Instruction (op_mul, idxLine, constLine, mulLine);
+            int mulres = emitInstruction (mulInstr);
+            
+            int addLine = ++sp;
+            //int addres = 0;
+            Instruction* addInstr = new Instruction (op_add, mulres, ids[i], addLine);
+            int addres = emitInstruction (addInstr);
+            
+            idxLine = addres;
+        }
+        
+        line = ++sp;
+        Instruction* instr2 = new Instruction (op_mul, idxLine, o1, line);
+        o1 = emitInstruction (instr2);
+        
+        line = ++sp;
+        //int dimLine = 0;
+        Instruction* dimInstr = new Instruction (op_const, arrTable [result].first, -1, line);
+        int dimLine = emitInstruction (dimInstr);
+        
+        line = ++sp;
+        Instruction* instr3 = new Instruction (op_add, -28, dimLine, line);
+        o2 = emitInstruction (instr3);
+        
+        std::cout << "o1: " << o1 << " o2: " << o2 << std::endl;
+        
+        line = ++sp;
+        Instruction* addaInstr = new Instruction (op_adda, o1, o2, line);
+        result = emitInstruction (addaInstr);
+    }*/
+    
+    if (isArray)
+    {
+        arrID1 = o2;
+        o2 = emitLoad (o2);
+        
+        //std::cout << "emited load" << std::endl;
+        
+        /*
+        //make load
+        line = ++sp;
+        
+        
+        //NEED CSE
+        Instruction* instr = new Instruction (op_load, o2, -1, line);
+        currentBB->pushInstruction (instr);
+        o2 = line;
+         */
+        arrIndexes.clear ();
+    }
    
-   // std::cout << "VARIABLE 1: " << o1 << " VARIABLE 2: " << o2 << std::endl;
-    
-    if (o2 > 0)
+    if (needStore)
     {
-        varTable [o1] = o2;
+        arrIndexes = storeIndexes;
+        arrID2 = o1;
+        o1 = emitStore (o2, o1);
+        
+        //std::cout << "emited store" << std::endl;
+        
+        // insert store instruction (from o2 to o1)
+        /*line = ++sp;
+        
+        //NEED CSE
+        Instruction* instr = new Instruction (op_store, o2, o1, line);
+        currentBB->pushInstruction (instr);
+        */
+        arrIndexes.clear ();
     }
-    else if (o2 < 0)
+    else
     {
-        varTable [o1] = varTable [-o2];
+        if (o2 > 0)
+        {
+            varTable [o1] = o2;
+        }
+        else if (o2 < 0)
+        {
+            varTable [o1] = varTable [-o2];
+        }
+        else err ("Assigning non-existing SSA line");
     }
-    else err ("Assigning non-existing SSA line");
-    
 }
 
 int Parser::funcCall ()
@@ -341,7 +511,9 @@ int Parser::funcCall ()
         
         int line = ++sp;
         Instruction* instr = new Instruction (op_read, -1, -1, line);
+        result = emitInstruction (instr);
         //@@@@ CSE
+        /*
         int CSELine = findCommonSubexpression (instr);
         if (CSELine == 0)
         {
@@ -349,7 +521,7 @@ int Parser::funcCall ()
             pushCSE (instr);
             result = line;
         } else result = CSELine;
-        
+        */
         //currentBB->pushInstruction (new Instruction (op_read, -1, -1, line) );
         //result = line;
         
@@ -361,20 +533,40 @@ int Parser::funcCall ()
         
         tk = lex.getToken ();
         int o1 = expression ();
-        int line = ++sp;
+        int line = 0;//++sp;
         
-        int var1 = -1;
         int operand1 = o1;
-        if (o1 < 0)
+        int var1 = -1;
+        
+        if (isArray)
         {
-            var1 = -o1;
-            operand1 = varTable [var1];
+            
+            //make load
+            line = ++sp;
+            
+            //NEED CSE
+            
+            /*Instruction* instr = new Instruction (op_load, o1, -1, line);
+            currentBB->pushInstruction (instr);*/
+            arrID1 = o1;
+            operand1 = emitLoad (o1);//line;
+            
+        }
+        else
+        {
+            if (o1 < 0)
+            {
+                var1 = -o1;
+                operand1 = varTable [var1];
+            }
         }
         
+        line = ++sp;
         Instruction* instr = new Instruction (op_write, operand1, -1, line);
         instr->setVar1 (var1);
-        
+        result = emitInstruction (instr);
         //@@@@ CSE
+        /*
         int CSELine = findCommonSubexpression (instr);
         if (CSELine == 0)
         {
@@ -382,7 +574,7 @@ int Parser::funcCall ()
             pushCSE (instr);
             result = line;
         } else result = CSELine;
-        
+        */
         //currentBB->pushInstruction (instr);
         //result = line;
         
@@ -466,6 +658,8 @@ void Parser::ifStatement ()
 	{
         wasElse = true;
         line = ++sp;
+        
+        //NEED CSE ??
         thenExitBB->pushInstruction (new Instruction (op_bra, -1 /* yet unknown */, -1, line));
         lex.next ();                /** Consuming else */
         
@@ -488,6 +682,8 @@ void Parser::ifStatement ()
     
     //@@@@ add phi functions
     line = ++sp;
+    
+    //NEED CSE ??
     fiBB->pushInstruction (new Instruction (line));
     
     if (wasElse) ifThenElseDiamond (ifBB, thenEntryBB, elseEntryBB, thenExitBB, elseExitBB, fiBB, &ifVarTable, &thenVarTable, &elseVarTable);
@@ -523,6 +719,8 @@ void Parser::whileStatement ()
     
     BasicBlock* jmpBackBB = currentBB;
     int line = ++sp;
+    
+    //NEED CSE ??
     jmpBackBB->pushInstruction (new Instruction (op_bra, -1 /* yet unknown */, -1, line));
     //branch doesn't require CSE
     std::map <int, int> afterLoopVarTable (varTable);          /** Making a local copy of varTable after all assignments in jmpBackBB */
@@ -531,23 +729,10 @@ void Parser::whileStatement ()
 	if (tk != tk_od) err ("Syntax error in a while statement!");
     lex.next ();                    /** Consuming od */
     
-    //@@@@ add phi functions
+    //NEED CSE ??
     odBB->pushInstruction (new Instruction (++sp));
     
-    /*
-    std::cout <<"BEFORE:" << std::endl;
-    for (auto& t : beforeLoopVarTable)
-        std::cout << t.first << " " << t.second << std::endl;
-    
-    std::cout <<"AFTER:" << std::endl;
-    for (auto& t : afterLoopVarTable)
-        std::cout << t.first << " " << t.second << std::endl;
-    */
-    
     whileDoDiamond (beforeBB, whileBB, doBB, jmpBackBB, odBB, &beforeLoopVarTable, &afterLoopVarTable);
-    
-    //odBB->body.pop_back ();    /** Removing nop instruction out of odBB  */
-    //sp--;
     
     currentBB = odBB;
 }
@@ -574,18 +759,88 @@ int Parser::designator ()
     lex.next ();                    /** Consuming identifier */
     
     tk = lex.getToken ();
+    
+    isArray = false;
+    //int numOfDim = 0;
+    //int index = 0;
+    //std::vector<int> ids;
     while (tk == openSqBracket)
     {
         lex.next ();                /** Consuming square bracket */
         
-        expression ();              //@@@@  only static arrays?..
+        //int num = 0;                //@@@@  should be an id for each dimension
+        int num = expression ();              //@@@@  only static arrays?..
+        /*index *= dims [numOfDims];
+        index += num;
+        numOfDim++;*/
+        arrIndexes.push_back (num);
         
         tk = lex.getToken ();
         if (tk != closeSqBracket) err ("Syntax error: missing closing square bracket!");
         lex.next ();                /** Consuming square bracket */
         tk = lex.getToken ();
+        
+        isArray = true;
     }
-    
+    /*
+    if (isArray)
+    {
+        
+        std::cout << ids.size () << " " << arrTable[result].second.size () << std::endl;
+        for (int i = 0; i < ids.size (); i++)
+        {
+            std::cout << ids[i] << " ";
+        }
+        std::cout << "\n";
+        
+        if (ids.size () != arrTable [result].second.size ()) err ("Incorrect number of indices for the array!");
+        
+        int o1 = 0, o2 = 0;
+        int line = ++sp;
+        Instruction* instr = new Instruction (op_const, 4, -1, line);
+        o1 = emitInstruction (instr);
+        
+        int idxLine = ids[0];
+        int idsSize = ids.size ();
+        for (int i = 1; i < idsSize; i++)
+        {
+            int line1 = ++sp;
+            Instruction* constInstr = new Instruction (op_const, arrTable [result].second [i], -1, line1);
+            int constLine = emitInstruction (constInstr);
+            
+            int mulLine = ++sp;
+            //int mulres = 0;
+            Instruction* mulInstr = new Instruction (op_mul, idxLine, constLine, mulLine);
+            int mulres = emitInstruction (mulInstr);
+            
+            int addLine = ++sp;
+            //int addres = 0;
+            Instruction* addInstr = new Instruction (op_add, mulres, ids[i], addLine);
+            int addres = emitInstruction (addInstr);
+            
+            idxLine = addres;
+        }
+        
+        line = ++sp;
+        Instruction* instr2 = new Instruction (op_mul, idxLine, o1, line);
+        o1 = emitInstruction (instr2);
+        
+        line = ++sp;
+        //int dimLine = 0;
+        Instruction* dimInstr = new Instruction (op_const, arrTable [result].first, -1, line);
+        int dimLine = emitInstruction (dimInstr);
+        
+        line = ++sp;
+        Instruction* instr3 = new Instruction (op_add, -28, dimLine, line);
+        o2 = emitInstruction (instr3);
+        
+        std::cout << "o1: " << o1 << " o2: " << o2 << std::endl;
+        
+        line = ++sp;
+        Instruction* addaInstr = new Instruction (op_adda, o1, o2, line);
+        result = emitInstruction (addaInstr);
+    }*/
+    //isArray = false;
     return result;
 }
 
@@ -632,8 +887,9 @@ int Parser::expression ()
         Instruction* instr = new Instruction (opc, operand1, operand2, line);
         instr->setVar1 (var1);
         instr->setVar2 (var2);
-        
+        result = emitInstruction (instr);
         //@@@@ CSE
+        /*
         int CSELine = findCommonSubexpression (instr);
         if (CSELine == 0)
         {
@@ -641,7 +897,7 @@ int Parser::expression ()
             result = line;
             pushCSE (instr);
         } else result = CSELine;
-        
+        */
         //currentBB->pushInstruction (instr );
         //result = line;
         
@@ -724,7 +980,7 @@ void Parser::relation ()
     Instruction* instr = new Instruction (op_cmp, operand1, operand2, line);
     instr->setVar1 (var1);
     instr->setVar2 (var2);
-    
+    int cmpLine = emitInstruction (instr);/*
     //@@@@ CSE
     int CSELine = findCommonSubexpression (instr);
     int cmpLine = 0;
@@ -734,9 +990,12 @@ void Parser::relation ()
         pushCSE (instr);
         cmpLine = line;
     } else cmpLine = CSELine;
+    */
     
     //currentBB->pushInstruction (instr );
     line = ++sp;
+    
+    //NEED CSE ??
     currentBB->pushInstruction (new Instruction (opc, cmpLine, -1/*unknown SSALine*/, line));
     //No CSE for branching obviously
 }
@@ -827,7 +1086,8 @@ int Parser::term ()
         Instruction* instr = new Instruction (opc, operand1, operand2, line);
         instr->setVar1 (var1);
         instr->setVar2 (var2);
-        
+        result = emitInstruction (instr);
+        /*
         //@@@@ CSE
         int CSELine = findCommonSubexpression (instr);
         if (CSELine == 0)
@@ -836,6 +1096,7 @@ int Parser::term ()
             pushCSE (instr);
             result = line;
         } else result = CSELine;
+        */
         
         tk = lex.getToken ();
     }
@@ -854,7 +1115,8 @@ int Parser::factor ()
         case identifier:
         {
             int o1 = designator ();             /** negative variable identifier */
-            result = -1*o1;
+            if (isArray) result = o1;
+            else result = -1*o1;
             //result = varTable [o1];
             break;
         }
@@ -863,7 +1125,7 @@ int Parser::factor ()
             //o1 = number ();
             int line = ++sp;
             Instruction* instr = new Instruction (op_const, lex.getVal (), -1, line);
-            
+            result = emitInstruction (instr);/*
             //@@@@ CSE
             int CSELine = findCommonSubexpression (instr);
             if (CSELine == 0)
@@ -871,7 +1133,7 @@ int Parser::factor ()
                 currentFunc->pushConstInstruction (instr);
                 pushCSE (instr);
                 result = line;
-            } else result = CSELine;
+            } else result = CSELine;*/
             //currentFunc->pushConstInstruction (new Instruction (op_const, lex.getVal (), -1, line) );
             //currentBB->pushInstruction (new Instruction (op_const, lex.getVal (), -1, line) );  //@@@@ GENERATE a BASIC BLOCK for CONSTANTS
             //result = line;
@@ -1126,15 +1388,27 @@ void Parser::replaceWithPhi (BasicBlock* bb, int varID, int SSALine)
 bool Parser::pushCSE (Instruction* instr)
 {
     bool result = false;
-    Instruction* before = CSE [instr->getOp ()];
+    Instruction* before;
+    opCode opc = nop;
+    if (instr->getOp () == op_store)
+    {
+        opc = op_load;
+        before = CSE [opc];
+    }
+    else
+    {
+        opc = instr->getOp ();
+        before = CSE [opc];
+    }
     if (before == nullptr) result = true;
     instr->setPrevDom (before);
-    CSE [instr->getOp ()] = instr;
+    CSE [opc] = instr;
     return result;
 }
 
 Instruction* Parser::popCSE (opCode opc)
 {
+    //@@@@ NOT USING THIS FUNCTION
     Instruction* result = CSE [opc];
     Instruction* before = result->getPrevDom ();
     CSE [opc] = before;
@@ -1145,15 +1419,36 @@ int Parser::findCommonSubexpression (Instruction* instr)
 {
     int result = 0;
     opCode opc = instr->getOp ();
-    Instruction* currentInstr = CSE [opc];
-    while (currentInstr != nullptr)
+    if (opc == op_load)
     {
-        if (currentInstr->compare (instr))
+        Instruction* currentInstr = CSE [opc];
+        while (currentInstr != nullptr )
         {
-            result = currentInstr->getLine ();
-            return result;
+            //std::cout << "current: \nARR1: " << currentInstr->getArr1 () << " ARR2: " << currentInstr->getArr2 () << std::endl;
+            //std::cout << "toCompare: \nARR1: " << instr->getArr1 () << " ARR2: " << instr->getArr2 () << std::endl;
+            
+            if (currentInstr->getOp () == op_store && currentInstr->getArr1 () == instr->getArr1 () && currentInstr->getArr2 () == instr->getArr2 ()) return 0;
+            if (currentInstr->compare (instr))
+            {
+                result = currentInstr->getLine ();
+                return result;
+            }
+            //if (currentInstr)
+            currentInstr = currentInstr->getPrevDom ();
         }
-        currentInstr = currentInstr->getPrevDom ();
+    }
+    else
+    {
+        Instruction* currentInstr = CSE [opc];
+        while (currentInstr != nullptr)
+        {
+            if (currentInstr->compare (instr))
+            {
+                result = currentInstr->getLine ();
+                return result;
+            }
+            currentInstr = currentInstr->getPrevDom ();
+        }
     }
     return result;
 }
@@ -1169,4 +1464,190 @@ void Parser::dotGraph ()
     file << basicBlocks;
     file << "\n\n";
     file << edges;
+    
+    file.close ();
+}
+
+int Parser::emitInstruction (Instruction* instr)
+{
+    int result = 0;
+    
+    switch (instr->getOp ())
+    {
+        case op_const:
+        {
+            int CSELine = findCommonSubexpression (instr);
+            if (CSELine == 0)
+            {
+                currentFunc->pushConstInstruction (instr);
+                pushCSE (instr);
+                result = instr->getLine ();
+            } else result = CSELine;
+            break;
+        }
+        case op_store:
+        {
+            currentBB->pushInstruction (instr);
+            pushCSE (instr);
+            result = instr->getLine ();
+            break;
+        }
+        case op_load:
+        /*{
+            break;
+        }*/
+        case op_adda:
+        case op_neg:
+        case op_add:
+        case op_sub:
+        case op_mul:
+        case op_div:
+        case op_cmp:
+        {
+            //std::cout << "STARTING CSE for \n" << instr->toString () << std::endl;
+            int CSELine = findCommonSubexpression (instr);
+            if (CSELine == 0)
+            {
+                currentBB->pushInstruction (instr);
+                pushCSE (instr);
+                result = instr->getLine ();
+            } else result = CSELine;
+            break;
+        }
+        default:
+        {
+            //std::cout << "NO CSE for \n" << instr->toString () << std::endl;
+            currentBB->pushInstruction (instr);
+            //pushCSE (instr);
+            result = instr->getLine ();
+            break;
+        }
+            
+    }
+    
+    //std::cout << result << std::endl;
+    return result;
+}
+
+int Parser::emitLoad (int toLoad)
+{
+    int result = 0;
+    
+    if (arrIndexes.size () != arrTable [toLoad].second.size ()) err ("Incorrect number of indexes for the array!");
+    
+    int o1 = 0, o2 = 0;
+    int line = ++sp;
+    Instruction* instr = new Instruction (op_const, 4, -1, line);
+    o1 = emitInstruction (instr);
+    
+    int idxLine = arrIndexes[0];
+    int idsSize = arrIndexes.size ();
+    for (int i = 1; i < idsSize; i++)
+    {
+        int line1 = ++sp;
+        Instruction* constInstr = new Instruction (op_const, arrTable [toLoad].second [i], -1, line1);
+        int constLine = emitInstruction (constInstr);
+        
+        int mulLine = ++sp;
+        //int mulres = 0;
+        Instruction* mulInstr = new Instruction (op_mul, idxLine, constLine, mulLine);
+        int mulres = emitInstruction (mulInstr);
+        
+        int addLine = ++sp;
+        //int addres = 0;
+        Instruction* addInstr = new Instruction (op_add, mulres, arrIndexes[i], addLine);
+        int addres = emitInstruction (addInstr);
+        
+        idxLine = addres;
+    }
+    
+    line = ++sp;
+    Instruction* instr2 = new Instruction (op_mul, idxLine, o1, line);
+    o1 = emitInstruction (instr2);
+    
+    line = ++sp;
+    //int dimLine = 0;
+    Instruction* dimInstr = new Instruction (op_const, arrTable [toLoad].first, -1, line);
+    int dimLine = emitInstruction (dimInstr);
+    
+    line = ++sp;
+    Instruction* instr3 = new Instruction (op_add, -28, dimLine, line);
+    o2 = emitInstruction (instr3);
+    
+    line = ++sp;
+    Instruction* addaInstr = new Instruction (op_adda, o1, o2, line);
+    int loadArg = emitInstruction (addaInstr);
+    
+    line = ++ sp;
+    Instruction* loadInstr = new Instruction (op_load, loadArg, -1, line);
+    loadInstr->setArr1 (arrID1);
+    result = emitInstruction (loadInstr);
+    
+    return result;
+}
+
+int Parser::emitStore (int what, int where)
+{
+    int result = 0;
+    //std::cout << "what: " << what << " \n where: " << where << std::endl;
+    
+    /*std::cout << arrIndexes.size () << " : " << arrTable [where].second.size () << std::endl;
+    for (int i = 0; i < arrIndexes.size (); i++)
+    {
+        std::cout << arrIndexes [i] << " ";
+    }
+    std::cout << "\n";
+    */
+    if (arrIndexes.size () != arrTable [where].second.size ()) err ("Incorrect number of indices for the array!");
+    
+    int o1 = 0, o2 = 0;
+    int line = ++sp;
+    Instruction* instr = new Instruction (op_const, 4, -1, line);
+    o1 = emitInstruction (instr);
+    
+    int idxLine = arrIndexes[0];
+    int idsSize = arrIndexes.size ();
+    for (int i = 1; i < idsSize; i++)
+    {
+        int line1 = ++sp;
+        Instruction* constInstr = new Instruction (op_const, arrTable [where].second [i], -1, line1);
+        int constLine = emitInstruction (constInstr);
+        
+        int mulLine = ++sp;
+        //int mulres = 0;
+        Instruction* mulInstr = new Instruction (op_mul, idxLine, constLine, mulLine);
+        int mulres = emitInstruction (mulInstr);
+        
+        int addLine = ++sp;
+        //int addres = 0;
+        Instruction* addInstr = new Instruction (op_add, mulres, arrIndexes[i], addLine);
+        int addres = emitInstruction (addInstr);
+        
+        idxLine = addres;
+    }
+    
+    line = ++sp;
+    Instruction* instr2 = new Instruction (op_mul, idxLine, o1, line);
+    o1 = emitInstruction (instr2);
+    
+    line = ++sp;
+    //int dimLine = 0;
+    Instruction* dimInstr = new Instruction (op_const, arrTable [where].first, -1, line);
+    int dimLine = emitInstruction (dimInstr);
+    
+    line = ++sp;
+    Instruction* instr3 = new Instruction (op_add, -28, dimLine, line);
+    o2 = emitInstruction (instr3);
+    
+    line = ++sp;
+    Instruction* addaInstr = new Instruction (op_adda, o1, o2, line);
+    int storeArg = emitInstruction (addaInstr);
+    
+    line = ++sp;
+    Instruction* storeInstr = new Instruction (op_store, what, storeArg, line);
+    storeInstr->setArr1 (arrID1);
+    storeInstr->setArr2 (arrID2);
+    result = emitInstruction (storeInstr);
+    
+    return result;
 }

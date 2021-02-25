@@ -65,6 +65,9 @@ public:
     void setVar1 (int varID);
     void setVar2 (int varID);
     
+    void setArr1 (int ID);
+    void setArr2 (int ID);
+    
     bool operator==(const Instruction &i2) const
     {
         return (this->SSALine == i2.SSALine);
@@ -107,6 +110,16 @@ public:
         return this->var2;
     }
     
+    int getArr1 ()
+    {
+        return this->arr1;
+    }
+    
+    int getArr2 ()
+    {
+        return this->arr2;
+    }
+    
     std::string toString ();
     
     
@@ -126,6 +139,8 @@ private:
     int SSALine;
     
     int var1 = -1, var2 = -1;
+    
+    int arr1 = -1, arr2 = -1;
     
     Instruction* prevDomInstr = nullptr;
     
