@@ -1428,11 +1428,16 @@ int Parser::findCommonSubexpression (Instruction* instr)
             //std::cout << "toCompare: \nARR1: " << instr->getArr1 () << " ARR2: " << instr->getArr2 () << std::endl;
             
             if (currentInstr->getOp () == op_store && currentInstr->getArr1 () == instr->getArr1 () && currentInstr->getArr2 () == instr->getArr2 ()) return 0;
+            if (currentInstr->addaArg1 == instr->addaArg1 && currentInstr->addaArg2 == instr->addaArg2)
+            {
+                result = currentInstr->getLine ();
+                return result;
+            }/*
             if (currentInstr->compare (instr))
             {
                 result = currentInstr->getLine ();
                 return result;
-            }
+            }*/
             //if (currentInstr)
             currentInstr = currentInstr->getPrevDom ();
         }
@@ -1474,6 +1479,20 @@ int Parser::emitInstruction (Instruction* instr)
     
     switch (instr->getOp ())
     {
+        case op_load:
+        {
+            currentBB->pushInstruction (instr);
+            pushCSE (instr);
+            result = instr->getLine ();
+            break;
+        }
+        case op_adda:
+        {
+            currentBB->pushInstruction (instr);
+            //pushCSE (instr);
+            result = instr->getLine ();
+            break;
+        }
         case op_const:
         {
             int CSELine = findCommonSubexpression (instr);
@@ -1492,11 +1511,11 @@ int Parser::emitInstruction (Instruction* instr)
             result = instr->getLine ();
             break;
         }
-        case op_load:
+        //case op_load:
         /*{
             break;
         }*/
-        case op_adda:
+        //case op_adda:
         case op_neg:
         case op_add:
         case op_sub:
@@ -1576,13 +1595,27 @@ int Parser::emitLoad (int toLoad)
     
     line = ++sp;
     Instruction* addaInstr = new Instruction (op_adda, o1, o2, line);
-    int loadArg = emitInstruction (addaInstr);
+    int loadArg = line;//emitInstruction (addaInstr);
     
     line = ++ sp;
     Instruction* loadInstr = new Instruction (op_load, loadArg, -1, line);
-    loadInstr->setArr1 (arrID1);
-    result = emitInstruction (loadInstr);
     
+    loadInstr->addaArg1 = o1;
+    loadInstr->addaArg2 = o2;
+    
+    loadInstr->setArr1 (arrID1);
+    
+    int CSELine = findCommonSubexpression (loadInstr);
+    
+    if (CSELine == 0)
+    {
+        emitInstruction (addaInstr);
+        result = emitInstruction (loadInstr);
+    }
+    else
+    {
+        result = CSELine;
+    }
     return result;
 }
 

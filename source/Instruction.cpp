@@ -235,7 +235,7 @@ std::string Instruction::toString ()
         }
         default:
         {
-            std::cout << "Incorrect instruction opcode!" << std::endl;
+            std::cout << "toString: Incorrect instruction opcode!" << std::endl;
             break;
         }
             

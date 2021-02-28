@@ -133,6 +133,9 @@ public:
         return this->prevDomInstr;
     }
     
+    int addaArg1 = -1;
+    int addaArg2 = -1;
+    
 private:
     opCode op;
     int operand1, operand2;
