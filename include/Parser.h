@@ -1,6 +1,7 @@
 #include "Lexer.h"
 #include "Module.h"
 #include <array>
+#include <set>
 
 #define SIZEOFINT 4
 class Parser
@@ -25,7 +26,7 @@ private:
 	void statSequence ();
 	void computation ();
 	void funcBody ();
-	void formalParam ();
+	std::vector <int> formalParam ();
 	void funcDecl ();
 	void varDecl ();
 	void typeDecl ();
@@ -69,7 +70,8 @@ private:
 /**
 *  varTable stores variable id (first) and SSA line number (second)
 */
-    std::map <int, int> varTable;
+    //std::map <int, int> varTable;
+    std::map <int, Function* > funcTable;
    
 /**
 *  arrTable stores array id (index of an element), memory offset (first in a pair), and vector of dimensions (second in a pair)

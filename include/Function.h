@@ -1,18 +1,26 @@
 #include "BasicBlock.h"
+#include <map>
 
 class Function
 {
 public:
-    Function (std::string s)
+    Function (int lbl)
     {
-        this->label = s;
+        this->label = lbl;
     }
-    Function (std::string s, BasicBlock* BB)
+    Function (int lbl, std::map <int, int> params, BasicBlock* BB)
     {
-        this->label = s;
+        this->label = lbl;
         this->entry = BB;
         this->exit = BB;
+        this->params = params;
         this->constBB = new BasicBlock (0);
+        for (auto& p : params)
+        {
+            std::cout << "function init : " << p.first << " : " << p.second << std::endl;
+            varTable [p.first] = -2;
+            this->params [p.first] = p.second;
+        }
     }
     Function (BasicBlock* entry, BasicBlock* exit)
     {
@@ -24,18 +32,36 @@ public:
     void pushFrontBB (BasicBlock* toInsert);
     void pushAfterBB (BasicBlock* toInsert, BasicBlock* after);
     
-    void pushConstInstruction (Instruction* instr);
+    BasicBlock* getEntry ()
+    {
+        return this->entry;
+    }
     
+    void pushConstInstruction (Instruction* instr);
     
     std::string toString ();
     
     void dotGraph (std::string* basicBlocks, std::string* edges);
     
+    bool isVoid = true;
+    
+/**
+*  varTable stores variable id (first) and SSA line number (second)
+*/
+    std::map <int, int> varTable;
+
+/**
+*  params stores SSA values of transferred parameters
+*/
+    std::map <int, int> params;
+    
+    int returningValue;
+    
 private:
     BasicBlock* entry;
     BasicBlock* exit;
     BasicBlock* constBB;
-    std::string label;
+    int label;
     //std::vector<BasicBlock* > body;
     
     

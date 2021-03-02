@@ -36,6 +36,9 @@ enum opCode
     op_write,
     op_writeNL,
     
+    op_call,
+    op_mu,
+    
     op_const,
 };
 
@@ -135,6 +138,8 @@ public:
     
     int addaArg1 = -1;
     int addaArg2 = -1;
+    
+    std::vector <int> funcArgs;
     
 private:
     opCode op;

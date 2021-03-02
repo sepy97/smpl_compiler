@@ -21,9 +21,11 @@ std::string Module::toString ()
 
 void Module::dotGraph (std::string* basicBlocks, std::string* edges)
 {
+    *basicBlocks += "digraph \n{\n";
     for (Function* f: this->body)
     {
-        *basicBlocks += "digraph ";
+        //*basicBlocks += "digraph ";
         f->dotGraph (basicBlocks, edges);
     }
+    *edges += "}\n";
 }

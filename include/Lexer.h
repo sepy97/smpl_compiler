@@ -8,51 +8,51 @@
 
 enum token
 {
-	identifier,
-	num,
-	eq,
-	neq,
-	le,
-	ge,
-	less,
-	greater,
-	add,
-	sub,
-	mul,
-	divis,
-	assign,
+	identifier, //0
+	num,    //1
+	eq,     //2
+	neq,    //3
+	le,     //4
+	ge,     //5
+	less,   //6
+	greater,//7
+	add,    //8
+	sub,    //9
+	mul,    //10
+	divis,  //11
+	assign, //12
 
-	openBracket,
-	closeBracket,
-	openSqBracket,
-	closeSqBracket,
-	openCurlBracket,
-	closeCurlBracket,
+	openBracket,    //13
+	closeBracket,   //14
+	openSqBracket,   //15
+	closeSqBracket,   //16
+	openCurlBracket,   //17
+	closeCurlBracket,   //18
 
-	dot,
-	comma,
-	semicolon,
+	dot,   //19
+	comma,   //20
+	semicolon,   //21
 
-	tk_let,
-	tk_call,
-	tk_if,
-	tk_then,
-	tk_else,
-	tk_fi,
-	tk_while,
-	tk_do,
-	tk_od,
-	tk_return,
-	tk_var,
-	tk_array,
-	tk_void,
-	tk_function,
-	tk_main,
-    tk_read,
-    tk_write,
-    tk_writeNL,
+	tk_let,   //22
+	tk_call,   //23
+	tk_if,   //24
+	tk_then,   //25
+	tk_else,   //26
+	tk_fi,   //27
+	tk_while,   //28
+	tk_do,   //29
+	tk_od,   //30
+	tk_return,   //31
+	tk_var,   //32
+	tk_array,   //33
+	tk_void,   //34
+	tk_function,   //35
+	tk_main,   //36
+    tk_read,   //37
+    tk_write,   //38
+    tk_writeNL,   //39
 	
-	eof
+	eof   //40
 };
 
 class Lexer

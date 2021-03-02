@@ -22,7 +22,10 @@ void Parser::parse ()
     {
        // Instruction instr = new Instruction (++sp);
         BasicBlock* bb = new BasicBlock (++bbCounter);///*instr*/new Instruction (++sp));
-        Function* f = new Function (std::string ("main"), bb);
+        
+        std::map <int, int> params; // @@@@
+        
+        Function* f = new Function (0 /* main funcID */, params, bb);
         m->insertFunc (f);
         
         currentFunc = f;
@@ -67,13 +70,13 @@ void Parser::computation ()
         tk = lex.getToken ();
     }
 	tk = lex.getToken ();
-	if (tk != openCurlBracket) err ("Syntax error: missing opening curling bracket!");
+	if (tk != openCurlBracket) err ("computation --- Syntax error: missing opening curling bracket!");
     lex.next ();                    /** Consuming bracket */
     
 	statSequence ();
 
 	tk = lex.getToken ();
-	if (tk != closeCurlBracket) err ("Syntax error: missing closing curling bracket!");
+	if (tk != closeCurlBracket) err ("computation --- Syntax error: missing closing curling bracket!");
     lex.next ();                    /** Consuming bracket */
     
 	tk = lex.getToken ();
@@ -137,7 +140,7 @@ void Parser::varDecl ()
     {
         while (tk == identifier)
         {
-            varTable [lex.getId ()] = 0;
+            currentFunc->varTable [lex.getId ()] = 0;
             lex.next ();                            /** Consuming identifier */
             
             tk = lex.getToken ();
@@ -202,43 +205,82 @@ void Parser::typeDecl ()
 void Parser::funcDecl ()
 {
     token tk = lex.getToken ();
+    int isVoid = false;
     if (tk == tk_void)
     {
         lex.next ();                /** Consuming tk_void */
+        isVoid = true;
         tk = lex.getToken ();
     }
-    if (tk != tk_function) err ("funcDecl");
+    if (tk != tk_function) err ("Incorrect function declaration (missing 'function' keyword)!");
     lex.next ();                    /** Consuming tk_function */
     
     //ident ();
     tk = lex.getToken ();
     if (tk != identifier) err ("Incorrect function declaration!");
     int funcID = lex.getId ();
+    
+    //funcTable.insert (funcID);
+    
     lex.next ();                    /** Consuming function identifier */
     
-    formalParam ();
+    std::vector <int> paramList = formalParam ();
     
     tk = lex.getToken ();
-    if (tk != semicolon) err ("Syntax error in function declaration: missing semicolon!");
+    if (tk != semicolon) err ("Syntax error in function declaration: missing semicolon after function header!");
     lex.next ();                    /** Consuming semicolon */
+    
+    //create function with isVoid, funcID and params
+    //make it a current func, save previous func
+    Function* prevFunc = currentFunc;
+    BasicBlock* prevBB = currentBB;
+    BasicBlock* bb = new BasicBlock (++bbCounter);
+    currentBB = bb;
+    std::map <int, int> params;
+    
+    std::cout << "paramList.size = " << paramList.size () << std::endl;
+    
+    for (int i = 0; i < paramList.size (); i++)
+    {
+        
+        std::cout << "paramList: " << paramList [i] << std::endl;
+        params [paramList [i]] = -5;// currentFunc->varTable [paramList [i]];
+    }
+    Function* f = new Function (funcID, params, currentBB);
+    
+    funcTable [funcID] = f;
+    
+    m->insertFunc (f);
+    currentFunc = f;
+    
+    std::cout << "funcDecl: " << lex.getToken () << std::endl;
     
     funcBody ();
     
+    //restore current func
+    currentFunc = prevFunc;
+    currentBB = prevBB;
+    
+    //restore currentBB @@@@???
+    
     tk = lex.getToken ();
-    if (tk != semicolon) err ("Syntax error in function declaration: missing semicolon!");
+    if (tk != semicolon) err ("Syntax error in function declaration: missing semicolon after function body!");
     lex.next ();                    /** Consuming semicolon */
 }
 
-void Parser::formalParam ()
+std::vector <int> Parser::formalParam ()
 {
+    std::vector <int> result;
+    
     token tk = lex.getToken ();
-    if (tk != openBracket) err ("formalParam");
+    if (tk != openBracket) err ("Incorrect function declaration: missing parameter brackets!");
     lex.next ();                    /** Consuming bracket */
     
     tk = lex.getToken ();
     while (tk == identifier)
     {
         int varID = lex.getId ();   /** Consuming variable from the argument */
+        result.push_back (varID);
         lex.next ();
         //ident ();
         
@@ -262,6 +304,8 @@ void Parser::formalParam ()
     tk = lex.getToken ();
     if (tk != closeBracket) err ("Syntax error: missing closing bracket!");
     lex.next ();                   /** Consuming bracket */
+    
+    return result;
 }
 
 void Parser::funcBody ()
@@ -274,16 +318,30 @@ void Parser::funcBody ()
         tk = lex.getToken ();
     }
     
+    for (auto& x : currentFunc->params)
+    {
+        //int line = ++sp;
+        Instruction* instr = new Instruction (op_mu, x.first, -1, ++sp);
+        int ssaLine = emitInstruction (instr);
+        currentFunc->varTable [x.first] = ssaLine;
+    }
+    
     tk = lex.getToken ();
+  //  std::cout << "should be curlBracket token: " << tk << std::endl;
     if (tk != openCurlBracket) err ("Syntax error: missing opening curling bracket!");
     lex.next ();                    /** Consuming curl bracket */
     tk = lex.getToken ();
+//    std::cout << "before statSequence token: " << tk << std::endl;
     if (tk == tk_let || tk == tk_call || tk == tk_if || tk == tk_while || tk == tk_return)
     {
         statSequence ();
         
     }
+    
+    // lex.next (); //@@@@
     tk = lex.getToken ();
+   // std::cout << "funcBody token: " << tk << std::endl;
+    
     if (tk != closeCurlBracket) err ("Syntax error: missing closing curling bracket!");
     lex.next ();                    /** Consuming curl bracket */
 }
@@ -291,6 +349,8 @@ void Parser::funcBody ()
 void Parser::statSequence ()
 {
     token tk = lex.getToken ();
+   // std::cout << "statSequence token: " << tk << std::endl;
+    
     while (tk == tk_let || tk == tk_call || tk == tk_if || tk == tk_while || tk == tk_return)
     {
         statement ();
@@ -487,11 +547,11 @@ void Parser::assignment ()
     {
         if (o2 > 0)
         {
-            varTable [o1] = o2;
+            currentFunc->varTable [o1] = o2;
         }
         else if (o2 < 0)
         {
-            varTable [o1] = varTable [-o2];
+            currentFunc->varTable [o1] = currentFunc->varTable [-o2];
         }
         else err ("Assigning non-existing SSA line");
     }
@@ -505,9 +565,15 @@ int Parser::funcCall ()
     token tk = lex.getToken ();
     if (tk == tk_read)
     {
+        std::cout << "InputNum: " << tk << std::endl;
+        
         lex.next ();                /** Consuming tk_read */
-        lex.next ();                /** Consuming bracket */
-        lex.next ();                /** Consuming bracket */
+        tk = lex.getToken ();
+        if (tk == openBracket)
+        {
+            lex.next ();                /** Consuming opening bracket */
+            lex.next ();                /** Consuming closing bracket */
+        }
         
         int line = ++sp;
         Instruction* instr = new Instruction (op_read, -1, -1, line);
@@ -557,7 +623,7 @@ int Parser::funcCall ()
             if (o1 < 0)
             {
                 var1 = -o1;
-                operand1 = varTable [var1];
+                operand1 = currentFunc->varTable [var1];
             }
         }
         
@@ -583,14 +649,27 @@ int Parser::funcCall ()
     }
     else
     {
+        std::cout << "INSIDE of funcCall" << std::endl;
+        
+        int line = 0;
+        std::vector <int> funcArgs;
+        int funcID = lex.getId ();
+        if (funcTable.find (funcID) == funcTable.end()) err ("Call of undeclared function!");
+        
+        lex.next ();
         token tk = lex.getToken ();
         if (tk == openBracket)
         {
             lex.next ();                /** Consuming bracket */
+            
+                std::cout << "AFTER consuming an opening bracket" << std::endl;
+            
             tk = lex.getToken ();
             while (tk == identifier || tk == num || tk == openBracket || tk == tk_call)
             {
-                expression ();
+                int paramLine = expression ();
+                if (paramLine < 0) paramLine = currentFunc->varTable [-paramLine];
+                funcArgs.push_back (paramLine);
                 
                 tk = lex.getToken ();
                 if (tk == comma)
@@ -598,14 +677,56 @@ int Parser::funcCall ()
                     lex.next ();        /** Consuming comma */
                     tk = lex.getToken ();
                 }
+                
+                //lex.next ();
             }
+            
+                std::cout << "BEFORE consuming a closing bracket" << std::endl;
+            
             tk = lex.getToken ();
-            if (tk != closeBracket) err ("Syntax error: missing closing curling bracket!");
+            if (tk != closeBracket) err ("Syntax error: missing closing bracket!");
             lex.next ();                /** Consuming bracket */
         }
+        
+        Function* f = funcTable [funcID];
+        if (f->params.size () != funcArgs.size ()) err ("Incorrect number of arguments in a function call!");
+        
+        std::cout << f->params.size () << " " << funcArgs.size () << std::endl;
+        
+        /*for (int i = 0; i < f->params.size (); i++)
+        {
+            std::cout << "params: " << f->params [i] << std::endl;
+        }*/
+            std::cout << "NUMBER of params checked" << std::endl;
+        
+        line = ++sp;
+        Instruction* instr = new Instruction (op_call, f->getEntry ()->label, -1, line);
+        //instr->funcArgs = std::vector <int> (funcArgs);
+        int paramIncrement = 0;
+        for (auto& x : f->params)
+        {
+            std::cout << x.first  // string (key)
+                      << ':'
+                      << x.second // string's value
+                      << std::endl;
+            x.second = funcArgs [paramIncrement];
+            f->varTable [x.first] = funcArgs [paramIncrement];
+            instr->funcArgs.push_back (funcArgs [paramIncrement]);
+            paramIncrement++;
+        }
+        /*for (int i = 0; i < funcArgs.size (); i++)
+        {
+            std::cout << "funcArgs: " << i << std::endl;
+            instr->funcArgs [i] = funcArgs [i];
+            
+            f->varTable [f->params [i]] = funcArgs [i];
+        }*/
+        result = emitInstruction (instr);
     }
     
     return result;
+    
+        std::cout << "FINISHED func call" << std::endl;
 }
 
 void Parser::ifStatement ()
@@ -629,7 +750,7 @@ void Parser::ifStatement ()
 	if (tk != tk_then) err ("Syntax error in an if statement!");
     lex.next ();                    /** Consuming then */
 	
-    std::map <int, int> ifVarTable (varTable);          /** Making a local copy of varTable before all possible assignments in thenBB */
+    std::map <int, int> ifVarTable (currentFunc->varTable);          /** Making a local copy of varTable before all possible assignments in thenBB */
     
     currentBB = thenEntryBB;
     
@@ -646,9 +767,9 @@ void Parser::ifStatement ()
     //bool nestedIf =
     int line = sp;
     
-    std::map <int, int> thenVarTable (varTable);          /** Making a local copy of varTable after thenBB and before all possible assignments in elseBB */
+    std::map <int, int> thenVarTable (currentFunc->varTable);          /** Making a local copy of varTable after thenBB and before all possible assignments in elseBB */
     
-    varTable = std::map <int, int> (ifVarTable);
+    currentFunc->varTable = std::map <int, int> (ifVarTable);
     
     CSE = backupCSE;
     
@@ -672,7 +793,7 @@ void Parser::ifStatement ()
         if (elseExitBB != elseEntryBB) hasNestedBranch = true;
     }
     
-    std::map <int, int> elseVarTable (varTable);          /** Making a local copy of varTable after elseBB */
+    std::map <int, int> elseVarTable (currentFunc->varTable);          /** Making a local copy of varTable after elseBB */
     
     CSE = backupCSE;
     
@@ -713,7 +834,7 @@ void Parser::whileStatement ()
     lex.next ();                    /** Consuming do */
 
     currentBB = doBB;
-    std::map <int, int> beforeLoopVarTable (varTable);          /** Making a local copy of varTable before all possible assignments in doBB */
+    std::map <int, int> beforeLoopVarTable (currentFunc->varTable);          /** Making a local copy of varTable before all possible assignments in doBB */
 	
     statSequence ();
     
@@ -723,7 +844,7 @@ void Parser::whileStatement ()
     //NEED CSE ??
     jmpBackBB->pushInstruction (new Instruction (op_bra, -1 /* yet unknown */, -1, line));
     //branch doesn't require CSE
-    std::map <int, int> afterLoopVarTable (varTable);          /** Making a local copy of varTable after all assignments in jmpBackBB */
+    std::map <int, int> afterLoopVarTable (currentFunc->varTable);          /** Making a local copy of varTable after all assignments in jmpBackBB */
 
 	tk = lex.getToken ();
 	if (tk != tk_od) err ("Syntax error in a while statement!");
@@ -741,11 +862,17 @@ void Parser::returnStatement ()
 {
     lex.next ();                    /** Consuming return */
     token tk = lex.getToken ();
+    
+    std::cout << "Return statement before expression: " << tk << std::endl;
     if (tk == identifier || tk == num || tk == openBracket || tk == tk_call)
     {
-        expression ();
+        currentFunc->returningValue = expression ();
         
     }
+    
+    //lex.next ();
+    std::cout << "Return statement: " << lex.getToken () << std::endl;
+    //lex.next ();
 }
 
 int Parser::designator ()
@@ -875,13 +1002,13 @@ int Parser::expression ()
         if (result < 0)
         {
             var1 = -result;
-            operand1 = varTable [var1];
+            operand1 = currentFunc->varTable [var1];
         }
         int operand2 = o2;
         if (o2 < 0)
         {
             var2 = -o2;
-            operand2 = varTable [var2];
+            operand2 = currentFunc->varTable [var2];
         }
         
         Instruction* instr = new Instruction (opc, operand1, operand2, line);
@@ -968,13 +1095,13 @@ void Parser::relation ()
     if (o1 < 0)
     {
         var1 = -o1;
-        operand1 = varTable [var1];
+        operand1 = currentFunc->varTable [var1];
     }
     int operand2 = o2;
     if (o2 < 0)
     {
         var2 = -o2;
-        operand2 = varTable [var2];
+        operand2 = currentFunc->varTable [var2];
     }
     
     Instruction* instr = new Instruction (op_cmp, operand1, operand2, line);
@@ -1074,13 +1201,13 @@ int Parser::term ()
         if (result < 0)
         {
             var1 = -result;
-            operand1 = varTable [var1];
+            operand1 = currentFunc->varTable [var1];
         }
         int operand2 = o2;
         if (o2 < 0)
         {
             var2 = -o2;
-            operand2 = varTable [var2];
+            operand2 = currentFunc->varTable [var2];
         }
         
         Instruction* instr = new Instruction (opc, operand1, operand2, line);
@@ -1163,6 +1290,8 @@ int Parser::factor ()
         }
         default:
         {
+            std::cout << "Factor token: " << tk << std::endl;
+            //std::cout << m->toString () << std::endl;
             err ("factor");
             break;
         }
@@ -1207,7 +1336,7 @@ void Parser::ifThenDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, BasicBloc
             {
                 int line = ++sp;
                 fiBB->phiInstructions.push_back ( std::pair<Instruction*, int> (new Instruction (op_phi, (*thenVarTable) [var.first], (*ifVarTable) [var.first], line), var.first));
-                varTable [var.first] = line;
+                currentFunc->varTable [var.first] = line;
                 
                 hasPhi = true;
             }
@@ -1250,7 +1379,7 @@ void Parser::ifThenElseDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, Basic
             {
                 int line = ++sp;
                 fiBB->phiInstructions.push_back ( std::pair<Instruction*, int> (new Instruction (op_phi, (*thenVarTable) [var.first], (*elseVarTable) [var.first], line), var.first));
-                varTable [var.first] = line;
+                currentFunc->varTable [var.first] = line;
             }
         }
     }
@@ -1299,7 +1428,7 @@ void Parser::whileDoDiamond (BasicBlock* beforeBB, BasicBlock* whileBB, BasicBlo
             {
                 int line = ++sp;
                 whileBB->phiInstructions.push_back ( std::pair<Instruction*, int> (new Instruction (op_phi, (*beforeLoopVarTable) [var.first], (*afterLoopVarTable) [var.first], line), var.first));
-                varTable [var.first] = line;
+                currentFunc->varTable [var.first] = line;
                 
                 //std::cout << "PROPAGATING PHI!" << std::endl;
                 

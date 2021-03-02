@@ -32,12 +32,13 @@ std::string Function::toString ()
     std::string res = "";
     res += this->label;
     res += "\n";
-    int bbCounter = 0;
+    //int bbCounter = 0;
     if (!constBB->body.empty ())
     {
         res += "BB";
-        res += std::to_string (bbCounter);
-        bbCounter++;
+        res += std::to_string (constBB->label);
+        //res += std::to_string (bbCounter);
+        //bbCounter++;
         res += ":\n";
         res += constBB->toString ();
         res += "########\n";
@@ -56,8 +57,9 @@ std::string Function::toString ()
                 if ((visited.insert (BB)).second == true )
                 {
                     res += "BB";
-                    res += std::to_string (bbCounter);
-                    bbCounter++;
+                    res += std::to_string (BB->label);
+                    //res += std::to_string (bbCounter);
+                    //bbCounter++;
                     res += ":\n";
                     res += BB->toString ();
                     res += "########\n";
@@ -79,12 +81,13 @@ std::string Function::toString ()
 
 void Function::dotGraph (std::string* basicBlocks, std::string* edges)
 {
-    *basicBlocks += this->label;
-    *basicBlocks += "\n{\n";
+    //*basicBlocks += this->label;
+    //*basicBlocks += "\n{\n";
     
     std::queue <BasicBlock*> q;
     std::set <BasicBlock*> visited;
-    int bbCounter = 0;
+    
+    //int bbCounter = 0;
     
     if (!constBB->body.empty ())
     {
@@ -183,7 +186,7 @@ void Function::dotGraph (std::string* basicBlocks, std::string* edges)
                 q.pop ();
         }
         
-        *edges += "\n}";
+        //*edges += "\n}";
     }
     else
     {

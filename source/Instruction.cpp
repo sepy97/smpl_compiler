@@ -227,6 +227,27 @@ std::string Instruction::toString ()
             res += "writeNL ";
             break;
         }
+        case op_call:
+        {
+            //@@@@
+            res += "call [BB";
+            res += std::to_string (operand1);
+            res += "]";
+            for (int i = 0; i < funcArgs.size (); i++)
+            {
+                res += "(";
+                res += std::to_string (funcArgs [i]);
+                res += ")";
+            }
+            break;
+        }
+        case op_mu:
+        {
+            res += "mu (";
+            res += std::to_string (operand1);
+            res += ")";
+            break;
+        }
         case op_const:
         {
             res += "const #";
