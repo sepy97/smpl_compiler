@@ -118,7 +118,7 @@ void Function::dotGraph (std::string* basicBlocks, std::string* edges)
         {
                 BasicBlock* BB = q.front ();
             
-            //std::cout << BB->body.size () << std::endl;
+  //          std::cout << BB->body.size () << std::endl;
             
                 if ((visited.insert (BB)).second == true )
                 {
@@ -128,7 +128,9 @@ void Function::dotGraph (std::string* basicBlocks, std::string* edges)
                     *basicBlocks += std::to_string (BB->label);
                     *basicBlocks += "|{";
                     
+//                    std::cout << "before BB dotGraph " << std::endl;
                     BB->dotGraph (basicBlocks, edges);
+  //                  std::cout << "AFTER BB dotGraph " << std::endl;
                     
                     *basicBlocks += "}\"]; \n";
                     
@@ -137,8 +139,12 @@ void Function::dotGraph (std::string* basicBlocks, std::string* edges)
                         q.push (succ);
                     }
                     
+                  //  std::cout << "SUCCESSORS " << std::endl;
+                    
                     for (BasicBlock* pred: BB->predecessors)
                     {
+                        
+                       // std::cout << "inside of SUCCESSORS " << std::endl;
                         
                         *edges += "bb";
                         *edges += std::to_string (pred->label);
@@ -147,19 +153,38 @@ void Function::dotGraph (std::string* basicBlocks, std::string* edges)
                         *edges += ":n ";
                         
                         
-            //std::cout << "CFG: " << pred->body.back ()->getOperand1 () << " " << pred->body.back ()->getOperand2 () << " " << BB->body.front ()->getLine () << std::endl;
+                      //  std::cout << "after labels " << std::endl;
                         
-                        if (pred->body.empty ())
+                        //std::cout << "CFG: " << pred->body.back ()->getOperand1 () << " " << pred->body.back ()->getOperand2 () << " " << BB->body.front ()->getLine () << std::endl;
+                        
+                        if (pred->body.empty () && pred->phiInstructions.empty ())
                         {
+                            
+                          //  std::cout << "ISEMPTY " << std::endl;
+                            
                             *edges += "[label=\"fall-through\"]";
+                        }
+                        else if (BB->body.empty () && BB->phiInstructions.empty ())
+                        {
+                         //   std::cout << "ISEMPTY " << std::endl;
+                            
+                            *edges += "[label=\"fall-through\"]";
+                            
                         }
                         else
                         {
+                           // std::cout << BB->toString () << std::endl;
+                           // std::cout << "-----------\n" << pred->toString () << std::endl;
+                           // std::cout << "not EMPTY " << std::endl;
+                            
                             int firstLine = -1;
                             Instruction* first;
                             if (BB->phiInstructions.empty ()) first = BB->body.front ();
                             else first = BB->phiInstructions.front ().first;
+                            
+                           // std::cout << "ignoring nops" << std::endl;
                             while (first->getOp () == nop) ++first;
+                            //std::cout << "AFTER ignoring nops" << std::endl;
                             
                             if (
                                 ( pred->body.back ()->getOp () == op_bne || pred->body.back ()->getOp () == op_beq || pred->body.back ()->getOp () == op_ble || pred->body.back ()->getOp () == op_blt || pred->body.back ()->getOp () == op_bge || pred->body.back ()->getOp () == op_bgt ) &&
@@ -181,6 +206,9 @@ void Function::dotGraph (std::string* basicBlocks, std::string* edges)
                         *edges += ";\n";
                             //q.push (succ);
                     }
+                    
+                    
+                   // std::cout << "PREDECESSORS " << std::endl;
                     
                 }
                 q.pop ();

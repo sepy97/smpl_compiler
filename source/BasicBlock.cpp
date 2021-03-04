@@ -6,7 +6,7 @@ void BasicBlock::pushInstruction (Instruction* toInsert)
     if (!this->body.empty ())
     {
         Instruction* lastInstr = this->body.back ();
-        if (lastInstr->getOp () == nop)
+        /*if (lastInstr->getOp () == nop)
         {
             lastInstr->setOp (toInsert->getOp ());
             lastInstr->setOperand1 (toInsert->getOperand1 ());
@@ -14,7 +14,8 @@ void BasicBlock::pushInstruction (Instruction* toInsert)
             lastInstr->setVar1 (toInsert->getVar1 ());
             lastInstr->setVar2 (toInsert->getVar2 ());
         }
-        else this->body.push_back (toInsert);
+        else*/
+        this->body.push_back (toInsert);
     }
     else this->body.push_back (toInsert);
 }

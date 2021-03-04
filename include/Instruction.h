@@ -141,6 +141,8 @@ public:
     
     std::vector <int> funcArgs;
     
+    std::vector <int> referredVariables; // IDs of all variables to which this instruction was assigned
+    
 private:
     opCode op;
     int operand1, operand2;

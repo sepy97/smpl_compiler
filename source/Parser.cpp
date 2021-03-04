@@ -238,12 +238,12 @@ void Parser::funcDecl ()
     currentBB = bb;
     std::map <int, int> params;
     
-    std::cout << "paramList.size = " << paramList.size () << std::endl;
+  //  std::cout << "paramList.size = " << paramList.size () << std::endl;
     
     for (int i = 0; i < paramList.size (); i++)
     {
         
-        std::cout << "paramList: " << paramList [i] << std::endl;
+    //    std::cout << "paramList: " << paramList [i] << std::endl;
         params [paramList [i]] = -5;// currentFunc->varTable [paramList [i]];
     }
     Function* f = new Function (funcID, params, currentBB);
@@ -253,7 +253,7 @@ void Parser::funcDecl ()
     m->insertFunc (f);
     currentFunc = f;
     
-    std::cout << "funcDecl: " << lex.getToken () << std::endl;
+  //  std::cout << "funcDecl: " << lex.getToken () << std::endl;
     
     funcBody ();
     
@@ -349,7 +349,7 @@ void Parser::funcBody ()
 void Parser::statSequence ()
 {
     token tk = lex.getToken ();
-   // std::cout << "statSequence token: " << tk << std::endl;
+  //  std::cout << "statSequence token: " << tk << std::endl;
     
     while (tk == tk_let || tk == tk_call || tk == tk_if || tk == tk_while || tk == tk_return)
     {
@@ -357,29 +357,34 @@ void Parser::statSequence ()
         
         tk = lex.getToken ();
         
-        //std::cout << "statSequence token: " << tk << std::endl;
+    // std::cout << "AFTER STATEMENT statSequence token: " << tk << std::endl;
         if (tk == semicolon)
         {
             lex.next ();            /** Consuming semicolon */
             tk = lex.getToken ();
-            //std::cout << "statSequence token: " << tk << std::endl;
+  //          std::cout << "SEMICOLON statSequence token: " << tk << std::endl;
         }
         
-        //std::cout << "statSequence token: " << tk << std::endl;
+//        std::cout << "END OF THE WHILE statSequence token: " << tk << std::endl;
     }
+    
+    //std::cout <<
 }
 
 void Parser::statement ()
 {
     token tk = lex.getToken ();
     
-   // std::cout << "statement token: " << tk << std::endl;
+  //  std::cout << "statement token: " << tk << std::endl;
     
 	switch (tk)
 	{
 		case tk_let:
 		{
 			assignment ();
+            
+            
+  //          std::cout << "RIGHT AFTER ASSIGNMENT "<< std::endl;
 
 			break;
 		}
@@ -439,90 +444,12 @@ void Parser::assignment ()
     isArray = false;
     
 	int o2 = expression ();
-    //std::vector <int> loadIndexes;
-    /*if (isArray)
-    {
-        loadIndexes = arrIndexes;
-    }*/
-    
-    //std::cout << isArray << " " << o1 << " " << o2 << std::endl;
-    
-    /*
-    if (isArray)
-    {
-        
-        std::cout << ids.size () << " " << arrTable[result].second.size () << std::endl;
-        for (int i = 0; i < ids.size (); i++)
-        {
-            std::cout << ids[i] << " ";
-        }
-        std::cout << "\n";
-        
-        if (ids.size () != arrTable [result].second.size ()) err ("Incorrect number of indices for the array!");
-        
-        int o1 = 0, o2 = 0;
-        int line = ++sp;
-        Instruction* instr = new Instruction (op_const, 4, -1, line);
-        o1 = emitInstruction (instr);
-        
-        int idxLine = ids[0];
-        int idsSize = ids.size ();
-        for (int i = 1; i < idsSize; i++)
-        {
-            int line1 = ++sp;
-            Instruction* constInstr = new Instruction (op_const, arrTable [result].second [i], -1, line1);
-            int constLine = emitInstruction (constInstr);
-            
-            int mulLine = ++sp;
-            //int mulres = 0;
-            Instruction* mulInstr = new Instruction (op_mul, idxLine, constLine, mulLine);
-            int mulres = emitInstruction (mulInstr);
-            
-            int addLine = ++sp;
-            //int addres = 0;
-            Instruction* addInstr = new Instruction (op_add, mulres, ids[i], addLine);
-            int addres = emitInstruction (addInstr);
-            
-            idxLine = addres;
-        }
-        
-        line = ++sp;
-        Instruction* instr2 = new Instruction (op_mul, idxLine, o1, line);
-        o1 = emitInstruction (instr2);
-        
-        line = ++sp;
-        //int dimLine = 0;
-        Instruction* dimInstr = new Instruction (op_const, arrTable [result].first, -1, line);
-        int dimLine = emitInstruction (dimInstr);
-        
-        line = ++sp;
-        Instruction* instr3 = new Instruction (op_add, -28, dimLine, line);
-        o2 = emitInstruction (instr3);
-        
-        std::cout << "o1: " << o1 << " o2: " << o2 << std::endl;
-        
-        line = ++sp;
-        Instruction* addaInstr = new Instruction (op_adda, o1, o2, line);
-        result = emitInstruction (addaInstr);
-    }*/
     
     if (isArray)
     {
         arrID1 = o2;
         o2 = emitLoad (o2);
         
-        //std::cout << "emited load" << std::endl;
-        
-        /*
-        //make load
-        line = ++sp;
-        
-        
-        //NEED CSE
-        Instruction* instr = new Instruction (op_load, o2, -1, line);
-        currentBB->pushInstruction (instr);
-        o2 = line;
-         */
         arrIndexes.clear ();
     }
    
@@ -532,29 +459,70 @@ void Parser::assignment ()
         arrID2 = o1;
         o1 = emitStore (o2, o1);
         
-        //std::cout << "emited store" << std::endl;
-        
-        // insert store instruction (from o2 to o1)
-        /*line = ++sp;
-        
-        //NEED CSE
-        Instruction* instr = new Instruction (op_store, o2, o1, line);
-        currentBB->pushInstruction (instr);
-        */
         arrIndexes.clear ();
     }
     else
     {
         if (o2 > 0)
         {
+     //       std::cout << "assigning a SSALine to a variable before phiCheck: " << o2 << std::endl;
+            
+            //@@@@  insert varID to referredVariables  phiCheck
+            int varID = o1;
+            int searchingLine = o2;
+            Instruction* instr;
+            
+    //        std::cout << "before loop! " << std::endl;
+            
+            for (int j = allInstructions.size (); --j >= 0;)
+            {
+                if (allInstructions [j]->getLine () == searchingLine)
+                {
+                    instr = allInstructions [j];
+                }
+            }
+            
+  //          std::cout << "after loop! " << std::endl;
+            //@@@@ get an assigned instruction
+            
+            if (std::find (instr->referredVariables.begin (), instr->referredVariables.end (), varID) == instr->referredVariables.end ())
+            {
+                instr->referredVariables.push_back (varID);
+            }
+            //@@@@
+     //       std::cout << "after FIND! " << std::endl;
+            
             currentFunc->varTable [o1] = o2;
         }
         else if (o2 < 0)
         {
+    //        std::cout << "assigning a variable to a variable before phiCheck: " << o2 << std::endl;
+            //@@@@  insert varID to referredVariables  phiCheck
+            int varID = o1;
+            int searchingLine = currentFunc->varTable [-o2];
+            Instruction* instr;
+            for (int j = allInstructions.size (); --j >= 0;)
+            {
+                if (allInstructions [j]->getLine () == searchingLine)
+                {
+                    instr = allInstructions [j];
+                }
+            }
+            
+            //@@@@ get an assigned instruction
+            
+            if (std::find (instr->referredVariables.begin (), instr->referredVariables.end (), varID) == instr->referredVariables.end ())
+            {
+                instr->referredVariables.push_back (varID);
+            }
+            //@@@@
+            
             currentFunc->varTable [o1] = currentFunc->varTable [-o2];
         }
         else err ("Assigning non-existing SSA line");
     }
+    
+//    std::cout << "end of assignment " << std::endl;
 }
 
 int Parser::funcCall ()
@@ -565,7 +533,7 @@ int Parser::funcCall ()
     token tk = lex.getToken ();
     if (tk == tk_read)
     {
-        std::cout << "InputNum: " << tk << std::endl;
+        //std::cout << "InputNum: " << tk << std::endl;
         
         lex.next ();                /** Consuming tk_read */
         tk = lex.getToken ();
@@ -578,18 +546,6 @@ int Parser::funcCall ()
         int line = ++sp;
         Instruction* instr = new Instruction (op_read, -1, -1, line);
         result = emitInstruction (instr);
-        //@@@@ CSE
-        /*
-        int CSELine = findCommonSubexpression (instr);
-        if (CSELine == 0)
-        {
-            currentBB->pushInstruction (instr);
-            pushCSE (instr);
-            result = line;
-        } else result = CSELine;
-        */
-        //currentBB->pushInstruction (new Instruction (op_read, -1, -1, line) );
-        //result = line;
         
     }
     else if (tk == tk_write)
@@ -606,14 +562,8 @@ int Parser::funcCall ()
         
         if (isArray)
         {
-            
-            //make load
             line = ++sp;
             
-            //NEED CSE
-            
-            /*Instruction* instr = new Instruction (op_load, o1, -1, line);
-            currentBB->pushInstruction (instr);*/
             arrID1 = o1;
             operand1 = emitLoad (o1);//line;
             
@@ -631,25 +581,13 @@ int Parser::funcCall ()
         Instruction* instr = new Instruction (op_write, operand1, -1, line);
         instr->setVar1 (var1);
         result = emitInstruction (instr);
-        //@@@@ CSE
-        /*
-        int CSELine = findCommonSubexpression (instr);
-        if (CSELine == 0)
-        {
-            currentBB->pushInstruction (instr);
-            pushCSE (instr);
-            result = line;
-        } else result = CSELine;
-        */
-        //currentBB->pushInstruction (instr);
-        //result = line;
         
         lex.next ();                /** Consuming bracket */
         
     }
     else
     {
-        std::cout << "INSIDE of funcCall" << std::endl;
+    //    std::cout << "INSIDE of funcCall" << std::endl;
         
         int line = 0;
         std::vector <int> funcArgs;
@@ -662,7 +600,7 @@ int Parser::funcCall ()
         {
             lex.next ();                /** Consuming bracket */
             
-                std::cout << "AFTER consuming an opening bracket" << std::endl;
+   //             std::cout << "AFTER consuming an opening bracket" << std::endl;
             
             tk = lex.getToken ();
             while (tk == identifier || tk == num || tk == openBracket || tk == tk_call)
@@ -681,7 +619,7 @@ int Parser::funcCall ()
                 //lex.next ();
             }
             
-                std::cout << "BEFORE consuming a closing bracket" << std::endl;
+   //             std::cout << "BEFORE consuming a closing bracket" << std::endl;
             
             tk = lex.getToken ();
             if (tk != closeBracket) err ("Syntax error: missing closing bracket!");
@@ -691,13 +629,13 @@ int Parser::funcCall ()
         Function* f = funcTable [funcID];
         if (f->params.size () != funcArgs.size ()) err ("Incorrect number of arguments in a function call!");
         
-        std::cout << f->params.size () << " " << funcArgs.size () << std::endl;
+//        std::cout << f->params.size () << " " << funcArgs.size () << std::endl;
         
         /*for (int i = 0; i < f->params.size (); i++)
         {
             std::cout << "params: " << f->params [i] << std::endl;
         }*/
-            std::cout << "NUMBER of params checked" << std::endl;
+  //          std::cout << "NUMBER of params checked" << std::endl;
         
         line = ++sp;
         Instruction* instr = new Instruction (op_call, f->getEntry ()->label, -1, line);
@@ -705,10 +643,10 @@ int Parser::funcCall ()
         int paramIncrement = 0;
         for (auto& x : f->params)
         {
-            std::cout << x.first  // string (key)
+       /*     std::cout << x.first  // string (key)
                       << ':'
                       << x.second // string's value
-                      << std::endl;
+                      << std::endl;*/
             x.second = funcArgs [paramIncrement];
             f->varTable [x.first] = funcArgs [paramIncrement];
             instr->funcArgs.push_back (funcArgs [paramIncrement]);
@@ -726,7 +664,7 @@ int Parser::funcCall ()
     
     return result;
     
-        std::cout << "FINISHED func call" << std::endl;
+ //       std::cout << "FINISHED func call" << std::endl;
 }
 
 void Parser::ifStatement ()
@@ -781,7 +719,9 @@ void Parser::ifStatement ()
         line = ++sp;
         
         //NEED CSE ??
-        thenExitBB->pushInstruction (new Instruction (op_bra, -1 /* yet unknown */, -1, line));
+        Instruction* thenInstr = new Instruction (op_bra, -1 /* yet unknown */, -1, line);
+        thenExitBB->pushInstruction (thenInstr);
+        allInstructions.push_back (thenInstr);
         lex.next ();                /** Consuming else */
         
         currentBB = elseEntryBB;
@@ -805,7 +745,9 @@ void Parser::ifStatement ()
     line = ++sp;
     
     //NEED CSE ??
-    fiBB->pushInstruction (new Instruction (line));
+    Instruction* fiInstr = new Instruction (line);
+    fiBB->pushInstruction (fiInstr);
+    allInstructions.push_back (fiInstr);
     
     if (wasElse) ifThenElseDiamond (ifBB, thenEntryBB, elseEntryBB, thenExitBB, elseExitBB, fiBB, &ifVarTable, &thenVarTable, &elseVarTable);
     else ifThenDiamond (ifBB, thenEntryBB, thenExitBB, fiBB, &ifVarTable, &thenVarTable);
@@ -838,11 +780,15 @@ void Parser::whileStatement ()
 	
     statSequence ();
     
+  //  std::cout << "in a while after statSequence " << std::endl;
+    
     BasicBlock* jmpBackBB = currentBB;
     int line = ++sp;
     
     //NEED CSE ??
-    jmpBackBB->pushInstruction (new Instruction (op_bra, -1 /* yet unknown */, -1, line));
+    Instruction* braInstr = new Instruction (op_bra, -1 /* yet unknown */, -1, line);
+    jmpBackBB->pushInstruction (braInstr);
+    allInstructions.push_back (braInstr);
     //branch doesn't require CSE
     std::map <int, int> afterLoopVarTable (currentFunc->varTable);          /** Making a local copy of varTable after all assignments in jmpBackBB */
 
@@ -851,11 +797,19 @@ void Parser::whileStatement ()
     lex.next ();                    /** Consuming od */
     
     //NEED CSE ??
-    odBB->pushInstruction (new Instruction (++sp));
+    Instruction* odInstr = new Instruction (++sp);
+    odBB->pushInstruction (odInstr);
+    allInstructions.push_back (odInstr);
+    
+  //  std::cout << "before whileDoDiamond " << std::endl;
     
     whileDoDiamond (beforeBB, whileBB, doBB, jmpBackBB, odBB, &beforeLoopVarTable, &afterLoopVarTable);
     
+ //   std::cout << "after whileDoDiamond " << std::endl;
+    
     currentBB = odBB;
+    
+ //   std::cout << "end of a while statement " << std::endl;
 }
 
 void Parser::returnStatement ()
@@ -863,7 +817,7 @@ void Parser::returnStatement ()
     lex.next ();                    /** Consuming return */
     token tk = lex.getToken ();
     
-    std::cout << "Return statement before expression: " << tk << std::endl;
+ //   std::cout << "Return statement before expression: " << tk << std::endl;
     if (tk == identifier || tk == num || tk == openBracket || tk == tk_call)
     {
         currentFunc->returningValue = expression ();
@@ -871,7 +825,7 @@ void Parser::returnStatement ()
     }
     
     //lex.next ();
-    std::cout << "Return statement: " << lex.getToken () << std::endl;
+ //   std::cout << "Return statement: " << lex.getToken () << std::endl;
     //lex.next ();
 }
 
@@ -1123,7 +1077,9 @@ void Parser::relation ()
     line = ++sp;
     
     //NEED CSE ??
-    currentBB->pushInstruction (new Instruction (opc, cmpLine, -1/*unknown SSALine*/, line));
+    Instruction* cmpInstr = new Instruction (opc, cmpLine, -1/*unknown SSALine*/, line);
+    currentBB->pushInstruction (cmpInstr);
+    allInstructions.push_back (cmpInstr);
     //No CSE for branching obviously
 }
 
@@ -1177,7 +1133,9 @@ int Parser::term ()
 	int o1 = factor ();
     //if (o1 <)
     result = o1;
-    //std::cout << "term factor: " << o1 << std::endl;
+    
+   // std::cout << "term factor: " << o1 << " " << lex.getToken () << std::endl;
+    
     //resultOp rop;
 
 	token tk = lex.getToken ();
@@ -1290,7 +1248,7 @@ int Parser::factor ()
         }
         default:
         {
-            std::cout << "Factor token: " << tk << std::endl;
+           // std::cout << "Factor token: " << tk << std::endl;
             //std::cout << m->toString () << std::endl;
             err ("factor");
             break;
@@ -1335,8 +1293,14 @@ void Parser::ifThenDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, BasicBloc
             if ((*ifVarTable) [var.first] != 0 && (*thenVarTable) [var.first] != 0) /** Variable is initialized on both paths */
             {
                 int line = ++sp;
-                fiBB->phiInstructions.push_back ( std::pair<Instruction*, int> (new Instruction (op_phi, (*thenVarTable) [var.first], (*ifVarTable) [var.first], line), var.first));
+                Instruction* instr = new Instruction (op_phi, (*thenVarTable) [var.first], (*ifVarTable) [var.first], line);
+                //@@@@
+                instr->setVar1 (var.first);
+                instr->setVar2 (var.first);
+                //@@@@
+                fiBB->phiInstructions.push_back ( std::pair<Instruction*, int> (instr, var.first));
                 currentFunc->varTable [var.first] = line;
+                allInstructions.push_back (instr);
                 
                 hasPhi = true;
             }
@@ -1378,8 +1342,14 @@ void Parser::ifThenElseDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, Basic
             if ((*elseVarTable) [var.first] != 0 && (*thenVarTable) [var.first] != 0) /** Variable is initialized on both paths */
             {
                 int line = ++sp;
-                fiBB->phiInstructions.push_back ( std::pair<Instruction*, int> (new Instruction (op_phi, (*thenVarTable) [var.first], (*elseVarTable) [var.first], line), var.first));
+                Instruction* instr = new Instruction (op_phi, (*thenVarTable) [var.first], (*elseVarTable) [var.first], line);
+                //@@@@
+                instr->setVar1 (var.first);
+                instr->setVar2 (var.first);
+                //@@@@
+                fiBB->phiInstructions.push_back ( std::pair<Instruction*, int> (instr, var.first));
                 currentFunc->varTable [var.first] = line;
+                allInstructions.push_back (instr);
             }
         }
     }
@@ -1420,6 +1390,8 @@ void Parser::whileDoDiamond (BasicBlock* beforeBB, BasicBlock* whileBB, BasicBlo
      ADD PHI instructions!
      */
     
+  //  std::cout << "beforeLoopVarTable " << std::endl;
+    
     for (auto const& var: *beforeLoopVarTable)
     {
         if ( (*beforeLoopVarTable) [var.first] != (*afterLoopVarTable) [var.first])
@@ -1427,10 +1399,30 @@ void Parser::whileDoDiamond (BasicBlock* beforeBB, BasicBlock* whileBB, BasicBlo
             if ((*beforeLoopVarTable) [var.first] != 0 && (*afterLoopVarTable) [var.first] != 0) /** Variable is initialized on both paths */
             {
                 int line = ++sp;
-                whileBB->phiInstructions.push_back ( std::pair<Instruction*, int> (new Instruction (op_phi, (*beforeLoopVarTable) [var.first], (*afterLoopVarTable) [var.first], line), var.first));
+                Instruction* instr = new Instruction (op_phi, (*beforeLoopVarTable) [var.first], (*afterLoopVarTable) [var.first], line);
+                //@@@@
+                instr->setVar1 (var.first);
+                instr->setVar2 (var.first);
+                //@@@@
+                whileBB->phiInstructions.push_back ( std::pair<Instruction*, int> (instr, var.first));
+                
+                allInstructions.push_back (instr);   //@@@@
+                
                 currentFunc->varTable [var.first] = line;
                 
-                //std::cout << "PROPAGATING PHI!" << std::endl;
+                //@@@@ check phi nodes phiCheck
+                int varID = var.first;
+                //Instruction* instr;
+                //@@@@ get an assigned instruction
+                
+                if (std::find (instr->referredVariables.begin (), instr->referredVariables.end (), varID) == instr->referredVariables.end ())
+                {
+                    instr->referredVariables.push_back (varID);
+                }
+                //@@@@
+                
+                
+           //     std::cout << "PROPAGATING PHI!" << std::endl;
                 
                 //std::cout << beforeBB->toString () << std::endl;
                 //std::cout << whileBB->toString () << std::endl;
@@ -1439,13 +1431,74 @@ void Parser::whileDoDiamond (BasicBlock* beforeBB, BasicBlock* whileBB, BasicBlo
                     std::cout << t.first << " " << t.second << std::endl;
                 */
                 
-                replaceWithPhi (whileBB, var.first, line);
+                visitedBB.clear ();
+                
+                bool afterLine = false;
+                
+                for (auto& p: whileBB->phiInstructions)
+                {
+                    if (afterLine)
+                    {
+                        if (p.first->getVar1 () == varID)
+                        {
+                            p.first->setOperand1 (line);
+                        }
+                        
+                        if (p.first->getVar2 () == varID)
+                        {
+                            p.first->setOperand2 (line);
+                        }
+                        
+                        if (find (p.first->referredVariables.begin (), p.first->referredVariables.end (), varID) != p.first->referredVariables.end ())
+                        {
+                            break;
+                            /*
+                            isFinished = true;
+                            return isFinished;*/
+                        }
+                    }
+                    else
+                    {
+                        if (p.first->getLine () == line) afterLine = true;
+                            
+                    }
+                             
+                }
+                
+                for (auto& i: whileBB->body)
+                {
+                    if (i->getVar1 () == varID)
+                    {
+                        i->setOperand1 (line);
+                    }
+                
+                    if (i->getVar2 () == varID)
+                    {
+                        i->setOperand2 (line);
+                    }
+                    
+                    if (find (i->referredVariables.begin (), i->referredVariables.end (), varID) != i->referredVariables.end ())
+                    {
+                        break;
+                        /*isFinished = true;
+                        return isFinished;*/
+                    }
+                }
+                
+                //@@@@ replaceWithPhi (whileBB, var.first, line);
+                
+            //    std::cout << "REPLACING PHI!" << std::endl;
+                std::cout << ++debugInfo << std::endl;
                 
                 propagatePhi (/*whileBB*/doBB, jmpBackBB, var.first, line);
+                
+          //      std::cout << "DONE PHI!" << std::endl;
                 
             }
         }
     }
+    
+ //   std::cout << "AFTER beforeLoopVarTable " << std::endl;
     
     
     Instruction* jmpBackAddr = jmpBackBB->body.back ();
@@ -1459,44 +1512,118 @@ void Parser::whileDoDiamond (BasicBlock* beforeBB, BasicBlock* whileBB, BasicBlo
     whileBranch->setOperand2 (odLine);
 }
 
-void Parser::propagatePhi (BasicBlock* startBB, BasicBlock* endBB, int varID, int SSALine)
+bool /*void*/ Parser::propagatePhi (BasicBlock* startBB, BasicBlock* endBB, int varID, int SSALine)
 {
+    
+    //std::vector <BasicBlock* > propagatingQueue;
+    BasicBlock* processedBB = startBB;
+    bool isFinished = false;
+    
+    while (true)
+    {
+        std::cout << "PHI PROPAGATION: \n" << processedBB->toString () << std::endl;
+        
+        isFinished = replaceWithPhi (processedBB, varID, SSALine);
+        if (processedBB->successors.empty ()) return isFinished;
+        
+        if (processedBB == endBB) return isFinished;
+        
+        if (isFinished) return true;
+        
+        if (processedBB->successors.size () > 1)
+        {
+            for (auto& bb: processedBB->successors)
+            {
+                //if (isFinished) return true;
+                if ((visitedBB.insert (processedBB)).second == true )
+                {
+//                    isFinished =
+                    isFinished = propagatePhi (bb, endBB, varID, SSALine);
+                    //if (isFinished)
+                }
+                
+            }
+            return isFinished;
+        }
+        else
+        {
+            processedBB = processedBB->successors.front ();
+        }
+    }
+    
+    //false;
+    
     //if startBB
     //std::cout << startBB->toString () << std::endl;
     
     //std::cout << endBB->toString () << std::endl;
-    //std::cout << "@@@@@@@\n" << std::endl;
+  //  std::cout << "@@@@@@@\n" << std::endl;
+    
+    //std::set <BasicBlock*> visited;
     //BasicBlock* currentBB = startBB;
     //while (true)
+    //if (! isFinished)
+    //propagatingQueue.push_back (startBB);
+    /*
+    while (! propagatingQueue.empty ())
     {
+        BasicBlock* poppedBB = propagatingQueue.back ();
         
-        replaceWithPhi (startBB, varID, SSALine);
+        std::cout << poppedBB->toString () << std::endl;
         
-        if (startBB == endBB) return;
-        
-        if (startBB->successors.empty ()) return;
-        for (auto& bb: startBB->successors)
+        propagatingQueue.pop_back ();
+        if ((visited.insert (poppedBB)).second == true )
         {
+            isFinished = replaceWithPhi (poppedBB, varID, SSALine);
+        
+            if (isFinished) break;
+        //    std::cout << poppedBB->toString () << std::endl;
             
-            propagatePhi (bb, endBB, varID, SSALine);
+//            std::cout << endBB->toString () << std::endl;
+            //if (poppedBB == endBB) break;//return isFinished;
+            
+            if (poppedBB->successors.empty ()) break;
+            
+            for (auto& bb: poppedBB->successors)
+            {
+                if (isFinished) break;
+                //isFinished = propagatePhi (bb, endBB, varID, SSALine);
+                propagatingQueue.push_back (bb);
+            }
         }
         
-    }
+    }*/
+    
+    //propagatingQueue.clear ();
+    return isFinished;
 }
 
-void Parser::replaceWithPhi (BasicBlock* bb, int varID, int SSALine)
+bool /*void*/ Parser::replaceWithPhi (BasicBlock* bb, int varID, int SSALine)
 {
+    bool isFinished = false;
+    
+    if (bb->body.empty () && bb->phiInstructions.empty ()) return isFinished;
+    
     for (auto& p: bb->phiInstructions)
     {
+        std::cout << "PHI node: " << p.first->toString () << std::endl;
+        
         if (p.first->getVar1 () == varID)
         {
             p.first->setOperand1 (SSALine);
         }
         
-        if (p.first->getVar2 () == varID)
+       /* if (p.first->getVar2 () == varID)
         {
             p.first->setOperand2 (SSALine);
+        }*/
+        
+        if (find (p.first->referredVariables.begin (), p.first->referredVariables.end (), varID) != p.first->referredVariables.end ())
+        {
+            isFinished = true;
+            return isFinished;
         }
+                 
     }
     
     for (auto& i: bb->body)
@@ -1510,8 +1637,15 @@ void Parser::replaceWithPhi (BasicBlock* bb, int varID, int SSALine)
         {
             i->setOperand2 (SSALine);
         }
+        
+        if (find (i->referredVariables.begin (), i->referredVariables.end (), varID) != i->referredVariables.end ())
+        {
+            isFinished = true;
+            return isFinished;
+        }
     }
     
+    return isFinished;
 }
 
 bool Parser::pushCSE (Instruction* instr)
@@ -1611,6 +1745,7 @@ int Parser::emitInstruction (Instruction* instr)
         case op_load:
         {
             currentBB->pushInstruction (instr);
+            allInstructions.push_back (instr);
             pushCSE (instr);
             result = instr->getLine ();
             break;
@@ -1618,6 +1753,7 @@ int Parser::emitInstruction (Instruction* instr)
         case op_adda:
         {
             currentBB->pushInstruction (instr);
+            allInstructions.push_back (instr);
             //pushCSE (instr);
             result = instr->getLine ();
             break;
@@ -1628,6 +1764,7 @@ int Parser::emitInstruction (Instruction* instr)
             if (CSELine == 0)
             {
                 currentFunc->pushConstInstruction (instr);
+                allInstructions.push_back (instr);
                 pushCSE (instr);
                 result = instr->getLine ();
             } else result = CSELine;
@@ -1636,6 +1773,7 @@ int Parser::emitInstruction (Instruction* instr)
         case op_store:
         {
             currentBB->pushInstruction (instr);
+            allInstructions.push_back (instr);
             pushCSE (instr);
             result = instr->getLine ();
             break;
@@ -1657,6 +1795,7 @@ int Parser::emitInstruction (Instruction* instr)
             if (CSELine == 0)
             {
                 currentBB->pushInstruction (instr);
+                allInstructions.push_back (instr);
                 pushCSE (instr);
                 result = instr->getLine ();
             } else result = CSELine;
@@ -1666,6 +1805,7 @@ int Parser::emitInstruction (Instruction* instr)
         {
             //std::cout << "NO CSE for \n" << instr->toString () << std::endl;
             currentBB->pushInstruction (instr);
+            allInstructions.push_back (instr);
             //pushCSE (instr);
             result = instr->getLine ();
             break;

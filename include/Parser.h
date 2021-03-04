@@ -63,9 +63,12 @@ private:
     void ifThenElseDiamond (BasicBlock* ifBB,     BasicBlock* thenEntryBB, BasicBlock* elseEntryBB, BasicBlock* thenExitBB,  BasicBlock* elseExitBB, BasicBlock* fiBB, std::map <int, int>* ifVarTable, std::map <int, int>* thenVarTable, std::map <int, int>* elseVarTable);
     void whileDoDiamond    (BasicBlock* beforeBB, BasicBlock* whileBB,     BasicBlock* doBB,        BasicBlock* jmpBackBB,   BasicBlock* odBB, std::map <int, int>* beforeLoopVarTable, std::map <int, int>* afterLoopVarTable);
     
-    void propagatePhi (BasicBlock* startBB, BasicBlock* endBB, int varID, int SSALine);
+    bool propagatePhi (BasicBlock* startBB, BasicBlock* endBB, int varID, int SSALine);
     
-    void replaceWithPhi (BasicBlock* bb, int varID, int SSALine);
+    bool replaceWithPhi (BasicBlock* bb, int varID, int SSALine);
+    std::set <BasicBlock*> visitedBB;
+    
+    int debugInfo = 0; //@@@@
     
 /**
 *  varTable stores variable id (first) and SSA line number (second)
@@ -96,4 +99,5 @@ private:
     Instruction* popCSE (opCode opc);
     int findCommonSubexpression (Instruction* instr);
     
+    std::vector <Instruction* > allInstructions;
 };
