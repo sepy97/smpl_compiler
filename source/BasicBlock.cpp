@@ -5,8 +5,8 @@ void BasicBlock::pushInstruction (Instruction* toInsert)
 {
     if (!this->body.empty ())
     {
-        Instruction* lastInstr = this->body.back ();
-        /*if (lastInstr->getOp () == nop)
+        /*Instruction* lastInstr = this->body.back ();
+        if (lastInstr->getOp () == nop)
         {
             lastInstr->setOp (toInsert->getOp ());
             lastInstr->setOperand1 (toInsert->getOperand1 ());
@@ -44,7 +44,6 @@ std::string BasicBlock::toString ()
     if (this->body.empty () && this->phiInstructions.empty () ) res += "<empty>\n";
     else
     {
-        
         for (std::pair<Instruction* , int> i: this->phiInstructions)
         {
                 res += i.first->toString ();
@@ -57,7 +56,6 @@ std::string BasicBlock::toString ()
             res += "\n";
         }
     }
-    //std::cout << res << std::endl;
     return res;
 }
 
@@ -65,7 +63,6 @@ void BasicBlock::dotGraph (std::string* basicBlocks, std::string* edges)
 {
     if (this->body.empty () && this->phiInstructions.empty () )
     {
-        //res += "<empty>\n";
         *basicBlocks += " \\< empty \\> ";
     }
     else
@@ -75,19 +72,12 @@ void BasicBlock::dotGraph (std::string* basicBlocks, std::string* edges)
         {
             *basicBlocks += i.first->toString ();
             *basicBlocks += " | ";
-            //dotGraph (basicBlocks, edges);
-               // res += i.first->toString ();
-               // res += "\n";
         }
         
         for (Instruction* i: this->body)
         {
             *basicBlocks += i->toString ();
             *basicBlocks += " | ";
-            //if (i != this->body.end ()) *basicBlocks += " | ";
-            //i->dotGraph (basicBlocks, edges);
-            //res += i->toString ();
-            //res += "\n";
         }
         (*basicBlocks).pop_back ();
         (*basicBlocks).pop_back ();

@@ -66,7 +66,6 @@ public:
 	char getSym ();
 
 private:
-   // const char EOF = -1;
 	char sym;
 	void err ();
 	std::ifstream inputFile;

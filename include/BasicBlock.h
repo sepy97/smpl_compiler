@@ -31,6 +31,6 @@ public:
     int label;
 //private:
     std::vector<Instruction* > body;
-    std::vector< std::pair <Instruction*, int > > phiInstructions;  // each phi node corresponds to some variable 
+    std::vector< std::pair <Instruction*, int > > phiInstructions;  
     
 };

@@ -1,6 +1,5 @@
 #include <vector>
 #include <string>
-//#include "Operand.h"
 #include <iostream>
 #include <fstream>
 
@@ -38,6 +37,7 @@ enum opCode
     
     op_call,
     op_mu,
+    op_ret,
     
     op_const,
 };
@@ -48,8 +48,8 @@ public:
     Instruction (int line)
     {
         this->op = nop;
-        this->operand1 = -1;//Operand ();
-        this->operand2 = -1;//Operand ();
+        this->operand1 = -1;
+        this->operand2 = -1;
         this->SSALine = line;
     }
     
@@ -78,8 +78,6 @@ public:
     
     bool compare (const Instruction* i1)
     {
-        //std::cout << "COMPARING: \n" << i1->op << " " << this->op << i1->operand1 << " " << this->operand1 << i1->operand2 << " " << this->operand2 << std::endl;
-        
         return (i1->op == this->op && i1->operand1 == this->operand1 && i1->operand2 == this->operand2);
     }
     

@@ -17,7 +17,6 @@ public:
         this->constBB = new BasicBlock (0);
         for (auto& p : params)
         {
-            std::cout << "function init : " << p.first << " : " << p.second << std::endl;
             varTable [p.first] = -2;
             this->params [p.first] = p.second;
         }
@@ -29,20 +28,15 @@ public:
     }
     
     void pushBackBB  (BasicBlock* toInsert);
-    void pushFrontBB (BasicBlock* toInsert);
-    void pushAfterBB (BasicBlock* toInsert, BasicBlock* after);
+    void pushConstInstruction (Instruction* instr);
     
     BasicBlock* getEntry ()
     {
         return this->entry;
     }
     
-    void pushConstInstruction (Instruction* instr);
-    
     std::string toString ();
-    
     void dotGraph (std::string* basicBlocks, std::string* edges);
-    
     bool isVoid = true;
     
 /**
@@ -50,19 +44,20 @@ public:
 */
     std::map <int, int> varTable;
 
+ /**
+ *  arrTable stores array id (index of an element), memory offset (first in a pair), and vector of dimensions (second in a pair)
+ */
+    std::map <int, std::pair <int, std::vector <int> > > arrTable;
+    
 /**
 *  params stores SSA values of transferred parameters
 */
     std::map <int, int> params;
-    
-    int returningValue;
+    int returningValue = -1;
     
 private:
     BasicBlock* entry;
     BasicBlock* exit;
     BasicBlock* constBB;
     int label;
-    //std::vector<BasicBlock* > body;
-    
-    
 };

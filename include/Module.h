@@ -10,10 +10,8 @@ public:
         body.push_back (f);
     }
     
-    void insertFunc (Function* f);
-    
     std::string toString ();
-    
+    void insertFunc (Function* f);
     void dotGraph (std::string* basicBlocks, std::string* edges);
     
 //private:

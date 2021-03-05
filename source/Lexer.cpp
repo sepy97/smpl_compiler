@@ -14,7 +14,10 @@ Lexer::Lexer (std::string s)
 
 void Lexer::next ()
 {
-	while (sym == ' ' || sym == '\n' || sym == '\t') sym = inputFile.get ();
+    while (sym == ' ' || sym == '\n' || sym == '\t' || sym == '\r')
+    {
+        sym = inputFile.get ();
+    }
 	switch (sym)
 	{
 		case EOF:
@@ -53,7 +56,7 @@ void Lexer::next ()
 
 				tk = identifier;
 			}
-			break;
+            break;
 		}
 		case '0'...'9':
 		{	
@@ -206,10 +209,8 @@ void Lexer::next ()
 		{
             err ();
 			break;
-		}	
-
+		}
 	}
-
 }
 
 int Lexer::getVal ()

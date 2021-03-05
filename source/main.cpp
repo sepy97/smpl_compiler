@@ -13,7 +13,7 @@ int main (int argc, char* argv[])
         Parser tmp (fileToCompile);
         tmp.parse ();
         //std::cout << "STARTED DOT GRAPH" << std::endl;
-        tmp.dotGraph ();
+        tmp.dotGraph (fileToCompile+".smplIR");
         //std::cout << "FINISHED DOT GRAPH" << std::endl;
     }
 	//Lexer tmp ("inp.txt");

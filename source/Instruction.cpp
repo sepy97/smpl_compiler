@@ -38,8 +38,6 @@ void Instruction::setArr2 (int ID)
 
 std::string Instruction::toString ()
 {
-    //std::cout << this->op << std::endl;
-    
     std::string res = "";
     res += std::to_string (this->SSALine);
     res += ": ";
@@ -47,7 +45,7 @@ std::string Instruction::toString ()
     {
         case nop:
         {
-            res += "@@@@";
+            res += "NOP";
             break;
         }
         case op_neg:
@@ -110,7 +108,7 @@ std::string Instruction::toString ()
             res += ")";
             break;
         }
-        case op_adda:   //@@@@
+        case op_adda:
         {
             res += "adda (";
             res += std::to_string (operand1);
@@ -119,14 +117,14 @@ std::string Instruction::toString ()
             res += ")";
             break;
         }
-        case op_load:   //@@@@
+        case op_load:
         {
             res += "load (";
             res += std::to_string (operand1);
             res += ")";
             break;
         }
-        case op_store:  //@@@@
+        case op_store:
         {
             res += "store (";
             res += std::to_string (operand1);
@@ -229,7 +227,6 @@ std::string Instruction::toString ()
         }
         case op_call:
         {
-            //@@@@
             res += "call [BB";
             res += std::to_string (operand1);
             res += "]";
@@ -243,9 +240,8 @@ std::string Instruction::toString ()
         }
         case op_mu:
         {
-            res += "mu (";
+            res += "Parameter ";
             res += std::to_string (operand1);
-            res += ")";
             break;
         }
         case op_const:
@@ -254,14 +250,19 @@ std::string Instruction::toString ()
             res += std::to_string (operand1);
             break;
         }
+        case op_ret:
+        {
+            res += "ret (";
+            res += std::to_string (operand1);
+            res += ")";
+            break;
+        }
         default:
         {
             std::cout << "toString: Incorrect instruction opcode!" << std::endl;
             break;
         }
-            
     }
-    //std::cout << res << std::endl;
     return res;
 }
 
