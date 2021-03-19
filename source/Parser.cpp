@@ -356,6 +356,7 @@ void Parser::assignment ()
     lex.next ();                    /** Consuming let */
     
 	int o1 = designator ();
+    
     std::vector <int> storeIndexes;
     
     if (isArray)
@@ -372,14 +373,6 @@ void Parser::assignment ()
     isArray = false;
     
 	int o2 = expression ();
-    
-    if (isArray)
-    {
-        arrID1 = o2;
-        o2 = emitLoad (o2);
-        
-        arrIndexes.clear ();
-    }
    
     if (needStore)
     {
@@ -439,9 +432,9 @@ void Parser::assignment ()
 int Parser::funcCall (bool isVoid)
 {
     int result = 0;
-    
     lex.next ();                    /** Consuming call */
     token tk = lex.getToken ();
+    
     if (tk == tk_read)
     {
         if (isVoid) err ("Incorrect call of a non-void function!");
@@ -461,7 +454,6 @@ int Parser::funcCall (bool isVoid)
     }
     else if (tk == tk_write)
     {
-        
         if (!isVoid) err ("Incorrect call of a void function!");
         
         lex.next ();                /** Consuming tk_write */
@@ -476,7 +468,10 @@ int Parser::funcCall (bool isVoid)
         {
             line = ++sp;
             arrID1 = o1;
+            
             operand1 = emitLoad (o1);
+            
+            isArray = false;    //@@@@
         }
         else
         {
@@ -493,6 +488,21 @@ int Parser::funcCall (bool isVoid)
         instr->setVar1 (var1);
         result = emitInstruction (instr);
         lex.next ();                /** Consuming bracket */
+    }
+    else if (tk == tk_writeNL)
+    {
+        lex.next ();                /** Consuming tk_read */
+        tk = lex.getToken ();
+        if (tk == openBracket)
+        {
+            lex.next ();                /** Consuming opening bracket */
+            lex.next ();                /** Consuming closing bracket */
+        }
+        int line = ++sp;
+        Instruction* instr = new Instruction (op_writeNL, -1, -1, line);
+        result = emitInstruction (instr);
+        
+        lex.next ();
     }
     else
     {
@@ -520,7 +530,13 @@ int Parser::funcCall (bool isVoid)
             while (tk == identifier || tk == num || tk == openBracket || tk == tk_call)
             {
                 int paramLine = expression ();
-                if (paramLine < 0) paramLine = currentFunc->varTable [-paramLine];
+                
+                if (paramLine < 0)
+                {
+                    paramLine = currentFunc->varTable [-paramLine];
+                    if (paramLine == 0) err ("Use of unassigned variable!");
+                }
+                
                 funcArgs.push_back (paramLine);
                 
                 tk = lex.getToken ();
@@ -558,6 +574,7 @@ void Parser::ifStatement ()
     BasicBlock* thenEntryBB = new BasicBlock (++bbCounter);
     BasicBlock* elseEntryBB = new BasicBlock (++bbCounter);
     BasicBlock* fiBB        = new BasicBlock (++bbCounter);
+    
     
     bool hasNestedBranch = false;
     BasicBlock* ifBB = currentBB;
@@ -605,6 +622,10 @@ void Parser::ifStatement ()
     tk = lex.getToken ();
 	if (tk != tk_fi) err ("Syntax error in an if statement!");
     lex.next ();                    /** Consuming fi */
+    tk = lex.getToken ();
+    
+    //if (tk == semicolon) lex.next (); /** Consuming semicolon */
+    
     line = ++sp;
     Instruction* fiInstr = new Instruction (line);
     fiBB->pushInstruction (fiInstr);
@@ -660,8 +681,13 @@ void Parser::returnStatement ()
     if (tk == identifier || tk == num || tk == openBracket || tk == tk_call)
     {
         int o1 = expression ();
+        
         if (o1 > 0) currentFunc->returningValue = o1;
-        else if (o1 < 0) currentFunc->returningValue = currentFunc->varTable [-o1];
+        else if (o1 < 0)
+        {
+            currentFunc->returningValue = currentFunc->varTable [-o1];
+            if (currentFunc->returningValue == 0) err ("Use of unassigned variable!");
+        }
         Instruction* retInstr = new Instruction (op_ret, currentFunc->returningValue, -1, ++sp);
         emitInstruction (retInstr);
     }
@@ -675,13 +701,18 @@ int Parser::designator ()
     result = lex.getId ();
     lex.next ();                    /** Consuming identifier */
     tk = lex.getToken ();
-    isArray = false;
+    //isArray = false;
     while (tk == openSqBracket)
     {
+        isArray = false;
         lex.next ();                /** Consuming square bracket */
         
         int num = expression ();
         
+        if (num < 0)
+        {
+            num = currentFunc->varTable [-num];
+        }
         arrIndexes.push_back (num);
         tk = lex.getToken ();
         if (tk != closeSqBracket) err ("Syntax error: missing closing square bracket!");
@@ -689,6 +720,7 @@ int Parser::designator ()
         tk = lex.getToken ();
         isArray = true;
     }
+    
     return result;
 }
 
@@ -697,6 +729,16 @@ int Parser::expression ()
     int result = 0;
     
 	int o1 = term ();
+    
+    if (isArray)
+    {
+        arrID1 = o1;
+        
+        o1 = emitLoad (o1);
+        
+        arrIndexes.clear ();
+        isArray = false;
+    }
     
     result = o1;
 	token tk = lex.getToken ();
@@ -708,6 +750,16 @@ int Parser::expression ()
         
         int o2 = term ();
         
+        if (isArray)
+        {
+            arrID1 = o2;
+            
+            o2 = emitLoad (o2);
+            
+            arrIndexes.clear ();
+            isArray = false;
+        }
+        
         int line = ++sp;
         int var1 = -1, var2 = -1;
         int operand1 = result;
@@ -715,12 +767,14 @@ int Parser::expression ()
         {
             var1 = -result;
             operand1 = currentFunc->varTable [var1];
+            //if (operand1 == 0) err ("Use of a non-initialized variable!");
         }
         int operand2 = o2;
         if (o2 < 0)
         {
             var2 = -o2;
             operand2 = currentFunc->varTable [var2];
+            //if (operand2 == 0) err ("Use of a non-initialized variable!");
         }
         Instruction* instr = new Instruction (opc, operand1, operand2, line);
         instr->setVar1 (var1);
@@ -791,12 +845,14 @@ void Parser::relation ()
     {
         var1 = -o1;
         operand1 = currentFunc->varTable [var1];
+        if (operand1 == 0) err ("Use of a non-initialized variable!");
     }
     int operand2 = o2;
     if (o2 < 0)
     {
         var2 = -o2;
         operand2 = currentFunc->varTable [var2];
+        if (operand2 == 0) err ("Use of a non-initialized variable!");
     }
     
     Instruction* instr = new Instruction (op_cmp, operand1, operand2, line);
@@ -859,6 +915,7 @@ int Parser::term ()
 	int o1 = factor ();
     
     result = o1;
+    
 	token tk = lex.getToken ();
     while (tk == mul || tk == divis)
     {
@@ -866,7 +923,7 @@ int Parser::term ()
         if (tk == divis) opc = op_div;
         lex.next ();                /** Consuming mul/div */
         
-        int o2 = factor (); //@@@@ factor instead of term!!!
+        int o2 = factor ();
         
         int line = ++sp;
         int var1 = -1, var2 = -1;
@@ -875,13 +932,16 @@ int Parser::term ()
         {
             var1 = -result;
             operand1 = currentFunc->varTable [var1];
+            if (operand1 == 0) err ("Use of a non-initialized variable!");
         }
         int operand2 = o2;
         if (o2 < 0)
         {
             var2 = -o2;
             operand2 = currentFunc->varTable [var2];
+            if (operand2 == 0) err ("Use of a non-initialized variable!");
         }
+        
         Instruction* instr = new Instruction (opc, operand1, operand2, line);
         instr->setVar1 (var1);
         instr->setVar2 (var2);
@@ -896,13 +956,17 @@ int Parser::factor ()
 {
     int result = 0;
     token tk = lex.getToken ();
+    
     switch (tk)
     {
         case identifier:
         {
             int o1 = designator ();             /** negative variable identifier */
             
-            if (isArray) result = o1;
+            if (isArray)
+            {
+                result = o1;
+            }
             else result = -1*o1;
             break;
         }
@@ -939,6 +1003,7 @@ int Parser::factor ()
             break;
         }
     }
+    
     return result;
 }
 
@@ -952,6 +1017,11 @@ void Parser::err (std::string arg)
 #ifdef RELEASE
     exit (0);
 #endif
+}
+
+void Parser::warn (std::string arg)
+{
+    std::cout << "Warning: " << arg << std::endl;
 }
 
 void Parser::ifThenDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, BasicBlock* thenExitBB, BasicBlock* fiBB, std::map <int, int>* ifVarTable, std::map <int, int>* thenVarTable)
@@ -968,9 +1038,15 @@ void Parser::ifThenDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, BasicBloc
     {
         if ( (*ifVarTable) [var.first] != (*thenVarTable) [var.first])
         {
-            if ((*ifVarTable) [var.first] != 0 && (*thenVarTable) [var.first] != 0) /** Variable is initialized on both paths */
+            if ((*thenVarTable) [var.first] == 0 && (*ifVarTable) [var.first] == 0) err ("Use of unassigned variable!");
+            if ((*thenVarTable) [var.first] == 0) warn ("Use of unassigned variable!");
+            if ((*ifVarTable) [var.first] == 0) warn ("Use of unassigned variable!");
+            // if ((*ifVarTable) [var.first] != 0 && (*thenVarTable) [var.first] != 0) /** Variable is initialized on both paths */
             {
                 int line = ++sp;
+                if ((*thenVarTable) [var.first] == 0 && (*ifVarTable) [var.first] == 0) err ("Use of unassigned variable!");
+                if ((*thenVarTable) [var.first] == 0) warn ("Use of unassigned variable!");
+                if ((*ifVarTable) [var.first] == 0) warn ("Use of unassigned variable!");
                 Instruction* instr = new Instruction (op_phi, (*thenVarTable) [var.first], (*ifVarTable) [var.first], line);
                 instr->setVar1 (var.first);
                 instr->setVar2 (var.first);
@@ -1002,7 +1078,10 @@ void Parser::ifThenElseDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, Basic
     {
         if ( (*thenVarTable) [var.first] != (*elseVarTable) [var.first])
         {
-            if ((*elseVarTable) [var.first] != 0 && (*thenVarTable) [var.first] != 0) /** Variable is initialized on both paths */
+            if ((*thenVarTable) [var.first] == 0 && (*elseVarTable) [var.first] == 0) err ("Use of unassigned variable!");
+            if ((*thenVarTable) [var.first] == 0) warn ("Use of unassigned variable!");
+            if ((*elseVarTable) [var.first] == 0) warn ("Use of unassigned variable!");
+            //if ((*elseVarTable) [var.first] != 0 && (*thenVarTable) [var.first] != 0) /** Variable is initialized on both paths */
             {
                 int line = ++sp;
                 Instruction* instr = new Instruction (op_phi, (*thenVarTable) [var.first], (*elseVarTable) [var.first], line);
@@ -1012,8 +1091,18 @@ void Parser::ifThenElseDiamond (BasicBlock* ifBB, BasicBlock* thenEntryBB, Basic
                 currentFunc->varTable [var.first] = line;
                 allInstructions.push_back (instr);
             }
+            /*else
+            {
+                if ((*thenVarTable) [var.first] == 0 && (*elseVarTable) [var.first] == 0) err ("Use of unassigned variable!");
+                if ((*thenVarTable) [var.first] == 0) warn ("Use of unassigned variable!");
+                if ((*elseVarTable) [var.first] == 0) warn ("Use of unassigned variable!");
+            }*/
         }
     }
+    
+    if (thenEntryBB->body.empty () && thenEntryBB->phiInstructions.empty ()) thenEntryBB->body.push_back (new Instruction (nop, -1, -1, ++sp));
+    if (elseEntryBB->body.empty () && elseEntryBB->phiInstructions.empty ()) elseEntryBB->body.push_back (new Instruction (nop, -1, -1, ++sp));
+    
     Instruction* ifBranch = ifBB->body.back ();
     int elseEntryAddr = elseEntryBB->body.front ()->getLine ();
     if (! elseEntryBB->phiInstructions.empty ()) elseEntryAddr = elseEntryBB->phiInstructions.front ().first->getLine ();
@@ -1037,11 +1126,14 @@ void Parser::whileDoDiamond (BasicBlock* beforeBB, BasicBlock* whileBB, BasicBlo
     
     for (auto const& var: *beforeLoopVarTable)
     {
-        if ( (*beforeLoopVarTable) [var.first] != (*afterLoopVarTable) [var.first])
+        if ( (*beforeLoopVarTable) [var.first] != (*afterLoopVarTable) [var.first]) //@@@ MAYBE COMMENT OUT
         {
             if ((*beforeLoopVarTable) [var.first] != 0 && (*afterLoopVarTable) [var.first] != 0) /** Variable is initialized on both paths */
             {
                 int line = ++sp;
+                if ((*beforeLoopVarTable) [var.first] == 0 && (*afterLoopVarTable) [var.first] == 0) err ("Use of unassigned variable!");
+                if ((*beforeLoopVarTable) [var.first] == 0) warn ("Use of unassigned variable!");
+                if ((*afterLoopVarTable) [var.first] == 0) warn ("Use of unassigned variable!");
                 Instruction* instr = new Instruction (op_phi, (*beforeLoopVarTable) [var.first], (*afterLoopVarTable) [var.first], line);
                 instr->setVar1 (var.first);
                 instr->setVar2 (var.first);
@@ -1155,16 +1247,6 @@ bool Parser::pushCSE (Instruction* instr)
     return result;
 }
 
-/*
-Instruction* Parser::popCSE (opCode opc)
-{
-    //@@@@ NOT USING THIS FUNCTION
-    Instruction* result = CSE [opc];
-    Instruction* before = result->getPrevDom ();
-    CSE [opc] = before;
-    return result;
-}*/
-
 int Parser::findCommonSubexpression (Instruction* instr)
 {
     int result = 0;
@@ -1212,6 +1294,8 @@ int Parser::emitInstruction (Instruction* instr)
     {
         case op_load:
         {
+            if (instr->getOperand1 () == 0 || instr->getOperand2 () == 0) err ("Uninitialized variable in a load instruction!"); //@@@@
+            
             currentBB->pushInstruction (instr);
             allInstructions.push_back (instr);
             pushCSE (instr);
@@ -1220,6 +1304,8 @@ int Parser::emitInstruction (Instruction* instr)
         }
         case op_adda:
         {
+            if (instr->getOperand1 () == 0 || instr->getOperand2 () == 0) err ("Uninitialized variable in an adda instruction!"); //@@@@
+            
             currentBB->pushInstruction (instr);
             allInstructions.push_back (instr);
             result = instr->getLine ();
@@ -1230,6 +1316,8 @@ int Parser::emitInstruction (Instruction* instr)
             int CSELine = findCommonSubexpression (instr);
             if (CSELine == 0)
             {
+                //if (instr->getOperand1 () == 0 || instr->getOperand2 () == 0) err ("Uninitialized variable in a const instruction!"); //@@@@
+                
                 currentFunc->pushConstInstruction (instr);
                 allInstructions.push_back (instr);
                 pushCSE (instr);
@@ -1239,6 +1327,8 @@ int Parser::emitInstruction (Instruction* instr)
         }
         case op_store:
         {
+            if (instr->getOperand1 () == 0 || instr->getOperand2 () == 0) err ("Uninitialized variable in a store instruction!"); //@@@@
+            
             currentBB->pushInstruction (instr);
             allInstructions.push_back (instr);
             pushCSE (instr);
@@ -1255,6 +1345,8 @@ int Parser::emitInstruction (Instruction* instr)
             int CSELine = findCommonSubexpression (instr);
             if (CSELine == 0)
             {
+                if (instr->getOperand1 () == 0 || instr->getOperand2 () == 0) err ("Usage of uninitialized variable!"); //@@@@
+                
                 currentBB->pushInstruction (instr);
                 allInstructions.push_back (instr);
                 pushCSE (instr);
@@ -1264,6 +1356,7 @@ int Parser::emitInstruction (Instruction* instr)
         }
         default:
         {
+            if (instr->getOperand1 () == 0 || instr->getOperand2 () == 0) err ("Uninitialized variable in a load instruction!"); //@@@@
             currentBB->pushInstruction (instr);
             allInstructions.push_back (instr);
             result = instr->getLine ();
@@ -1276,7 +1369,11 @@ int Parser::emitInstruction (Instruction* instr)
 int Parser::emitLoad (int toLoad)
 {
     int result = 0;
-    if (arrIndexes.size () != currentFunc->arrTable [toLoad].second.size ()) err ("Incorrect number of indexes for the array!");
+  
+    if (arrIndexes.size () != currentFunc->arrTable [toLoad].second.size ())
+    {
+        err ("Incorrect number of indexes for the array!");
+    }
     int o1 = 0, o2 = 0;
     int line = ++sp;
     Instruction* instr = new Instruction (op_const, SIZEOFINT, -1, line);
@@ -1342,6 +1439,7 @@ int Parser::emitStore (int what, int where)
     Instruction* instr = new Instruction (op_const, SIZEOFINT, -1, line);
     o1 = emitInstruction (instr);
     int idxLine = arrIndexes[0];
+    
     int idsSize = arrIndexes.size ();
     for (int i = 1; i < idsSize; i++)
     {
@@ -1377,6 +1475,9 @@ int Parser::emitStore (int what, int where)
     int storeArg = emitInstruction (addaInstr);
     
     line = ++sp;
+    
+    if (what < 0) what = currentFunc->varTable [-what];
+    
     Instruction* storeInstr = new Instruction (op_store, what, storeArg, line);
     storeInstr->setArr1 (arrID1);
     storeInstr->setArr2 (arrID2);

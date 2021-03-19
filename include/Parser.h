@@ -18,7 +18,8 @@ private:
 *	"Lexer" will get tokens from a source file (more info in Lexer.h)
 */
 	Lexer lex;
-	void err (std::string arg);
+	void err  (std::string arg);
+    void warn (std::string arg);
 
 /**
 *	Functions required by EBNF for smpl

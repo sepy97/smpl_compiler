@@ -18,6 +18,7 @@ void Lexer::next ()
     {
         sym = inputFile.get ();
     }
+    
 	switch (sym)
 	{
 		case EOF:
